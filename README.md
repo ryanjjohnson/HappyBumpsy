@@ -18,6 +18,8 @@ Every tap is a point. Most points wins. Mind the opossum.
 - Loiter in the **HONK** box in the bottom-right corner for 15 seconds and a Canada goose is released from
   the top-left corner. It chases players for 20 seconds, the summoner first. A hit in your **side** costs 5 points
   and 20 seconds playing dead. Meet it with your top or bottom and it bounces off.
+- Join an empty arena and two house bots show up: **Wuhhhhh** hunts you, **Heeeeeyyyyy** mostly wanders.
+  They leave when the last human does, and they don't get on the score tables.
 - Scores stick around: the join screen shows who's playing now, the latest scores of people who left,
   and the all-time top 10.
 

@@ -41,7 +41,7 @@ class Scores {
   }
 
   recordDeparture(p, now = Date.now()) {
-    if (!p) return;
+    if (!p || p.bot) return;
     this.data.latest.unshift({ name: p.name, score: p.score, at: now, playedMs: now - p.joinedAt });
     this.data.latest = this.data.latest.slice(0, LATEST_N);
     this.dirty = true;
@@ -49,7 +49,7 @@ class Scores {
 
   summary(world, now = Date.now()) {
     const current = [...world.players.values()]
-      .map((p) => ({ name: p.name, score: p.score, possum: p.possumUntil > now }))
+      .map((p) => ({ name: p.name, score: p.score, possum: p.possumUntil > now, bot: !!p.bot }))
       .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
     return {
       current,

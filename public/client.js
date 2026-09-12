@@ -134,6 +134,7 @@
     }
     for (const r of rows.slice(0, 10)) {
       const li = document.createElement('li');
+      if (r.bot) li.classList.add('bot');
       const n = document.createElement('span');
       n.className = 'n';
       n.textContent = fmt ? fmt(r) : r.name;
@@ -302,7 +303,7 @@
       const now = performance.now();
       if (now - lastBoard > 500) {
         lastBoard = now;
-        scores.current = cur.players.map((p) => ({ name: p.name, score: p.score, possum: p.possum }))
+        scores.current = cur.players.map((p) => ({ name: p.name, score: p.score, possum: p.possum, bot: p.bot }))
           .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
         fillList(lists.current, scores.current, (r) => (r.possum ? `${r.name} 💤` : r.name));
       }
@@ -319,6 +320,7 @@
       if (r.possum) li.classList.add('possum');
       if (r.critter) li.classList.add('critter');
       if (r.id === chased) li.classList.add('chased');
+      if (r.bot) li.classList.add('bot');
       const n = document.createElement('span'); n.className = 'n'; n.textContent = r.name;
       const p = document.createElement('span'); p.className = 'p'; p.textContent = r.score;
       li.append(n, p);
@@ -351,6 +353,8 @@
         if (ev.partial) fx(ev.x, ev.y - 20, `${ev.hits}/${C.hitsToScore}`, 'partial');
         else if (ev.via === 'possum') fx(ev.x, ev.y - 20, ev.scorer === myId ? '+1 FLIPPED!' : '+1 🦝', '');
         else fx(ev.x, ev.y - 20, ev.scorer === myId ? '+1 BUMP!' : '+1', '');
+      } else if (ev.type === 'bots') {
+        if (joined) showBanner(`🤖 ${ev.names.join(' and ')} wandered in to keep you company`, '', 4000);
       } else if (ev.type === 'goose') {
         showBanner(`🪿 ${ev.name} summoned a goose. RUN.`, 'goose', 4500);
       } else if (ev.type === 'goosed') {

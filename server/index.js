@@ -4,6 +4,7 @@ const http = require('http');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const game = require('./game');
+const bots = require('./bots');
 const Scores = require('./scores');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -47,7 +48,8 @@ function leave(ws) {
   ws.joined = false;
   const p = game.removePlayer(world, ws.id);
   scores.recordDeparture(p);
-  console.log(`- ${p && p.name} left (${p && p.score} pts) [${world.players.size} playing]`);
+  const botChange = bots.sync(world);
+  console.log(`- ${p && p.name} left (${p && p.score} pts) [${bots.humans(world)} humans]${botChange ? ` bots ${botChange}` : ''}`);
   broadcastScores();
 }
 
@@ -79,7 +81,8 @@ wss.on('connection', (ws, req) => {
         const name = sanitizeName(msg.name);
         game.addPlayer(world, ws.id, name);
         ws.joined = true;
-        console.log(`+ ${name} joined from ${req.socket.remoteAddress} [${world.players.size} playing]`);
+        const botChange = bots.sync(world);
+        console.log(`+ ${name} joined from ${req.socket.remoteAddress} [${bots.humans(world)} humans]${botChange ? ` bots ${botChange}` : ''}`);
         send(ws, { type: 'joined', id: ws.id, name });
         broadcastScores();
         break;
@@ -103,13 +106,14 @@ setInterval(() => {
   const now = Date.now();
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
+  bots.think(world, now);
   game.step(world, dt, now);
   const events = world.events.splice(0);
   let scoresChanged = false;
   for (const ev of events) {
     if (ev.type === 'bump' && !ev.partial) {
       const p = world.players.get(ev.scorer);
-      if (p && scores.noteScore(p, now)) scoresChanged = true;
+      if (p && !p.bot && scores.noteScore(p, now)) scoresChanged = true;
     }
   }
   if (clients.size) broadcast({ type: 'state', t: now, ...game.snapshot(world, now), events });

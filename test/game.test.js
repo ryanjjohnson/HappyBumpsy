@@ -138,7 +138,7 @@ test('snapshot exposes what the client needs', () => {
   p.possumUntil = NOW + 3000;
   p.possumHits = 4;
   const s = game.snapshot(w, NOW);
-  assert.deepEqual(s.players, [{ id: 'p', name: 'p', x: 100, y: 100, score: 0, possum: true, hits: 4, possumLeft: 3000, critter: false, critterLeft: 0 }]);
+  assert.deepEqual(s.players, [{ id: 'p', name: 'p', x: 100, y: 100, score: 0, possum: true, hits: 4, possumLeft: 3000, critter: false, critterLeft: 0, bot: false }]);
   assert.equal(s.opossum, null);
   game.removePlayer(w, 'p');
   assert.equal(game.snapshot(w, NOW).players.length, 0);

@@ -20,7 +20,7 @@ button { font: inherit; cursor: pointer; }
 
 .player .body { transition: transform .45s cubic-bezier(.4, 1.6, .5, 1), filter .3s; transform-origin: 0 0; }
 .player.possum .body { transform: rotate(180deg); filter: grayscale(.55) brightness(.85); }
-.player .ring { animation: train 5s linear infinite; transform-origin: 0 0; }
+.player .ring { animation: train 10s linear infinite; transform-origin: 0 0; }
 .player .name { font-size: 16px; font-weight: 800; fill: #fff; letter-spacing: .5px;
   paint-order: stroke; stroke: #000; stroke-width: 3px; stroke-linejoin: round; }
 .player .critter { display: none; }
@@ -52,6 +52,8 @@ button { font: inherit; cursor: pointer; }
 .fx.goosed { fill: #ff5c5c; font-size: 36px; animation-duration: 1.4s; }
 .banner.goose { background: #5a1f1f; color: #ffd9d9; }
 .board li.chased .n::after { content: " 🪿"; }
+.board li.bot .n, .scores li.bot .n { opacity: .75; }
+.board li.bot .n::before, .scores li.bot .n::before { content: "🤖 "; }
 
 /* opossum */
 #opossum-actor .waddle { animation: waddle .6s ease-in-out infinite; transform-origin: 100px 60px; transform-box: view-box; }

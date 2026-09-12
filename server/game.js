@@ -391,6 +391,7 @@ function snapshot(world, now = Date.now()) {
       possumLeft: possum ? p.possumUntil - now : 0,
       critter,
       critterLeft: critter ? p.critterUntil - now : 0,
+      bot: !!p.bot,
     });
   }
   const honk = [];

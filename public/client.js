@@ -153,7 +153,12 @@
     const g = el('g', {}, 'player');
     g.dataset.id = p.id;
     const body = el('g', {}, 'body');
-    body.appendChild(useEl('#face', { x: -R, y: -R, width: 2 * R, height: 2 * R }));
+    body.appendChild(useEl('#face', { x: -R, y: -R, width: 2 * R, height: 2 * R, class: 'face' }));
+    // playable-possum form: the opossum sprite, shown instead of the face while transformed
+    const critter = el('g', {}, 'critter');
+    const cw = 2 * R * 1.5, ch = cw / 2;
+    critter.appendChild(useEl('#opossum', { x: -cw / 2, y: -ch / 2 + 6, width: cw, height: ch }));
+    body.appendChild(critter);
     const ring = el('g', {}, 'ring');
     const text = el('text', {}, 'name');
     const tp = el('textPath', { startOffset: '0' });
@@ -170,7 +175,7 @@
     const badge = el('text', { x: 0, y: R + 40 }, 'badge');
     g.append(halo, body, zzz, hits, badge);
     layerPlayers.appendChild(g);
-    return { g, body, hits, badge, zzz, score: -1, possum: null };
+    return { g, body, critter, hits, badge, zzz, score: -1, possum: null, isCritter: null, lastX: p.x, facing: 1 };
   }
 
   function ensureOpossum() {
@@ -215,6 +220,15 @@
         if (!p.possum) e.hits.textContent = '';
       }
       if (p.possum) e.hits.textContent = `${p.hits}/${C.hitsToScore}`;
+      if (e.isCritter !== p.critter) {
+        e.isCritter = p.critter;
+        e.g.classList.toggle('critter', p.critter);
+      }
+      if (p.critter) {
+        if (x < e.lastX - 0.5) e.facing = -1; else if (x > e.lastX + 0.5) e.facing = 1;
+        e.critter.setAttribute('transform', e.facing < 0 ? 'scale(-1 1)' : '');
+      }
+      e.lastX = x;
       if (e.score !== p.score) { e.score = p.score; e.badge.textContent = p.score; }
       if (p.id === myId) { me = p; e.g.classList.add('me'); }
     }
@@ -237,9 +251,11 @@
     if (joined) {
       if (me) {
         hudScore.textContent = me.score;
-        if (me.possum) {
+        if (me.critter) {
+          showBanner(`🦝 YOU'RE THE POSSUM  ·  ${(me.critterLeft / 1000).toFixed(1)}s  ·  touch players to flip them`, 'critter', 0);
+        } else if (me.possum) {
           showBanner(`PLAYIN' POSSUM  ·  ${(me.possumLeft / 1000).toFixed(1)}s  ·  half speed, can't bump`, 'possum', 0);
-        } else if (hudBanner.classList.contains('possum')) {
+        } else if (hudBanner.classList.contains('possum') || hudBanner.classList.contains('critter')) {
           hideBanner();
         }
       }
@@ -263,6 +279,7 @@
       const li = document.createElement('li');
       if (r.id === myId) li.classList.add('me');
       if (r.possum) li.classList.add('possum');
+      if (r.critter) li.classList.add('critter');
       const n = document.createElement('span'); n.className = 'n'; n.textContent = r.name;
       const p = document.createElement('span'); p.className = 'p'; p.textContent = r.score;
       li.append(n, p);
@@ -293,9 +310,12 @@
     for (const ev of events) {
       if (ev.type === 'bump') {
         if (ev.partial) fx(ev.x, ev.y - 20, `${ev.hits}/${C.hitsToScore}`, 'partial');
+        else if (ev.via === 'possum') fx(ev.x, ev.y - 20, ev.scorer === myId ? '+1 FLIPPED!' : '+1 🦝', '');
         else fx(ev.x, ev.y - 20, ev.scorer === myId ? '+1 BUMP!' : '+1', '');
+      } else if (ev.type === 'transform') {
+        fx(ev.x, ev.y - 70, `${ev.name} IS THE POSSUM NOW`, 'transform');
       } else if (ev.type === 'possum') {
-        fx(ev.x, ev.y - 60, "playin' possum", 'possum');
+        fx(ev.x, ev.y - 60, ev.by ? `flipped by ${ev.by}` : "playin' possum", 'possum');
       } else if (ev.type === 'opossum') {
         if (joined) showBanner('🦝 an opossum waddles in… don\'t touch it', '', 3500);
       }

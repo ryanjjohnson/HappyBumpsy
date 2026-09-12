@@ -60,7 +60,11 @@ wss.on('connection', (ws, req) => {
     type: 'welcome',
     id: ws.id,
     arena: game.ARENA,
-    consts: { R: game.CONSTS.R, hitsToScore: game.CONSTS.hitsToScore, possumMs: game.CONSTS.possumMs, opossum: game.CONSTS.opossum },
+    consts: {
+      R: game.CONSTS.R, hitsToScore: game.CONSTS.hitsToScore, possumMs: game.CONSTS.possumMs,
+      bumpsToTransform: game.CONSTS.bumpsToTransform, transformWindowMs: game.CONSTS.transformWindowMs,
+      critterMs: game.CONSTS.critterMs, opossum: game.CONSTS.opossum,
+    },
     ...scores.summary(world),
   });
 

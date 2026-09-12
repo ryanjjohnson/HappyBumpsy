@@ -12,6 +12,9 @@ Every tap is a point. Most points wins. Mind the opossum.
 - An **opossum** waddles across the arena now and then. It's a solid barrier, and touching it makes you
   **play possum** for 5 seconds: you flip upside down, move at half speed, and can't bump anyone.
   You can still be bumped, but it takes **10** bumps to score a point off you.
+- Get scored on **3 times within 10 seconds** and you turn into a **playable possum** for 10 seconds.
+  Anyone you touch plays dead and you take the point. Nobody can score on you while you're the possum,
+  and the wild opossum leaves you alone.
 - Scores stick around: the join screen shows who's playing now, the latest scores of people who left,
   and the all-time top 10.
 

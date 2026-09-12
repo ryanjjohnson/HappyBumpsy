@@ -23,6 +23,10 @@ button { font: inherit; cursor: pointer; }
 .player .ring { animation: train 5s linear infinite; transform-origin: 0 0; }
 .player .name { font-size: 16px; font-weight: 800; fill: #fff; letter-spacing: .5px;
   paint-order: stroke; stroke: #000; stroke-width: 3px; stroke-linejoin: round; }
+.player .critter { display: none; }
+.player.critter .face { display: none; }
+.player.critter .critter { display: block; }
+.player.critter .critter use { animation: waddle .5s ease-in-out infinite; transform-origin: 0 0; }
 .player .halo { fill: none; stroke: #fff; stroke-width: 2; stroke-dasharray: 4 6; opacity: 0; }
 .player.me .halo { opacity: .8; animation: spin 12s linear infinite; transform-origin: 0 0; }
 .player .badge { font-size: 15px; font-weight: 800; fill: var(--accent); text-anchor: middle;
@@ -48,6 +52,7 @@ button { font: inherit; cursor: pointer; }
   paint-order: stroke; stroke: #000; stroke-width: 5px; stroke-linejoin: round; animation: rise 1s ease-out forwards; }
 .fx.partial { fill: #ffb0b0; font-size: 26px; }
 .fx.possum { fill: #d8dcff; font-size: 26px; }
+.fx.transform { fill: #ffb3c7; font-size: 30px; animation-duration: 1.6s; }
 @keyframes rise { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-70px); } }
 
 /* ---------- HUD ---------- */
@@ -59,12 +64,14 @@ button { font: inherit; cursor: pointer; }
 .banner { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); padding: 10px 18px; border-radius: 12px;
   background: #30345a; color: #e8ebff; font-weight: 800; letter-spacing: .5px; box-shadow: 0 6px 24px #0008; }
 .banner.possum { background: #4a2b3a; color: #ffd6e0; }
+.banner.critter { background: #5a3d2b; color: #ffe2c9; }
 .board { position: absolute; top: 14px; right: 16px; margin: 0; padding: 10px 14px 10px 30px; min-width: 190px;
   background: var(--panel); border-radius: 12px; font-size: 15px; }
 .board li { display: flex; justify-content: space-between; gap: 14px; padding: 2px 0; }
 .board li.me { color: var(--accent); font-weight: 700; }
 .board li .p { opacity: .8; }
 .board li.possum .n::after { content: " 💤"; }
+.board li.critter .n::after { content: " 🦝"; }
 .hud-help { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); padding: 8px 14px; border-radius: 12px;
   background: var(--panel); color: var(--muted); font-size: 14px; white-space: nowrap; display: flex; gap: 10px; align-items: center; }
 .hud-help button { background: transparent; color: var(--muted); border: 1px solid #444b66; border-radius: 6px; padding: 2px 10px; }

@@ -138,7 +138,7 @@ test('snapshot exposes what the client needs', () => {
   p.possumUntil = NOW + 3000;
   p.possumHits = 4;
   const s = game.snapshot(w, NOW);
-  assert.deepEqual(s.players, [{ id: 'p', name: 'p', x: 100, y: 100, score: 0, possum: true, hits: 4, possumLeft: 3000 }]);
+  assert.deepEqual(s.players, [{ id: 'p', name: 'p', x: 100, y: 100, score: 0, possum: true, hits: 4, possumLeft: 3000, critter: false, critterLeft: 0 }]);
   assert.equal(s.opossum, null);
   game.removePlayer(w, 'p');
   assert.equal(game.snapshot(w, NOW).players.length, 0);
@@ -153,4 +153,79 @@ test('the opossum spawns when due and leaves once it has crossed the arena', () 
   for (let i = 0; i < 60 * 60 && w.opossum; i++) game.step(w, DT, NOW + i * 33);
   assert.equal(w.opossum, null, 'gone');
   assert.ok(w.nextOpossumAt > NOW + 15_000);
+});
+
+// ---------- playable possum ("rage possum") ----------
+const { bumpsToTransform, transformWindowMs, critterMs } = game.CONSTS;
+
+function bumpAt(w, a, b, t) {
+  a.x = 500; a.y = 400; b.x = 500; b.y = 400 + 2 * R - 6; a.iy = 0; b.iy = 0;
+  a.bumpCooldownUntil = 0;
+  game.step(w, DT, t);
+}
+
+test('getting scored on 3 times in 10 seconds turns you into a playable possum', () => {
+  const w = world();
+  const a = place(w, 'a', 500, 400);
+  const b = place(w, 'b', 500, 500);
+  for (let i = 0; i < bumpsToTransform - 1; i++) bumpAt(w, a, b, NOW + i * 1000);
+  assert.equal(game.isCritter(b, NOW + 2000), false);
+  bumpAt(w, a, b, NOW + 2000);
+  assert.equal(a.score, bumpsToTransform);
+  assert.equal(game.isCritter(b, NOW + 2000), true);
+  assert.equal(b.critterUntil, NOW + 2000 + critterMs);
+  assert.ok(w.events.some((e) => e.type === 'transform' && e.id === 'b'));
+  assert.equal(game.snapshot(w, NOW + 2000).players.find((p) => p.id === 'b').critter, true);
+});
+
+test('bumps spread over more than 10 seconds do not transform you', () => {
+  const w = world();
+  const a = place(w, 'a', 500, 400);
+  const b = place(w, 'b', 500, 500);
+  const gap = transformWindowMs / 2 + 500;
+  for (let i = 0; i < bumpsToTransform; i++) bumpAt(w, a, b, NOW + i * gap);
+  assert.equal(a.score, bumpsToTransform);
+  assert.equal(game.isCritter(b, NOW + 3 * gap), false);
+});
+
+test('a playable possum flips anyone it touches and scores for it', () => {
+  const w = world();
+  const a = place(w, 'a', 500, 400);
+  const b = place(w, 'b', 500 + 2 * R - 6, 400); // side-on, which would never score normally
+  a.critterUntil = NOW + critterMs;
+  game.step(w, DT, NOW);
+  assert.equal(a.score, 1);
+  assert.equal(game.isPossum(b, NOW), true);
+  const ev = bumps(w).at(-1);
+  assert.equal(ev.via, 'possum');
+  assert.equal(ev.scorer, 'a');
+  assert.ok(w.events.some((e) => e.type === 'possum' && e.id === 'b' && e.by === 'a'));
+  // touching again while the victim is down (or immune afterwards) does not score again
+  a.x = 500; a.y = 400; b.x = 500 + 2 * R - 6; b.y = 400;
+  game.step(w, DT, NOW + 100);
+  assert.equal(a.score, 1);
+});
+
+test('a playable possum cannot be scored on and does not do top/bottom bumps', () => {
+  const w = world();
+  const a = place(w, 'a', 500, 400);
+  const b = place(w, 'b', 500, 400 + 2 * R - 6);
+  b.critterUntil = NOW + critterMs;
+  game.step(w, DT, NOW);
+  assert.equal(a.score, 0, 'the player on top gets nothing');
+  assert.equal(b.score, 1, 'the possum below flipped them instead');
+  assert.equal(game.isPossum(a, NOW), true);
+});
+
+test('possum form wears off, and the wild opossum ignores a playable possum', () => {
+  const w = world();
+  const p = place(w, 'p', 800, 450);
+  p.critterUntil = NOW + critterMs;
+  w.opossum = { x: 800 + R + 60, y: 450, dir: -1, speed: 0, hw: 85, hh: 34, t: 0 };
+  game.step(w, DT, NOW);
+  assert.equal(game.isPossum(p, NOW), false, 'not flipped by the wild opossum');
+  w.opossum = null;
+  game.step(w, DT, NOW + critterMs + 1);
+  assert.equal(game.isCritter(p, NOW + critterMs + 1), false);
+  assert.equal(p.critterUntil, 0);
 });

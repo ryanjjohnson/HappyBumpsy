@@ -11,6 +11,9 @@ const CONSTS = {
   hitsToScore: 10,       // bumps needed to score on a player who is playing possum
   bumpCooldownMs: 500,   // per-attacker cooldown between scoring bumps
   bounce: 320,           // impulse applied on a bump (px / s)
+  bumpsToTransform: 3,   // get scored on this many times...
+  transformWindowMs: 10000, // ...within this window, and you turn into a possum
+  critterMs: 10000,      // how long you stay a playable possum
   opossum: {
     w: 200, h: 100,      // drawn size
     hw: 85, hh: 34,      // collision half-extents (a bit smaller than the drawing)
@@ -48,6 +51,8 @@ function addPlayer(world, id, name, now = Date.now()) {
     possumImmuneUntil: 0,
     possumHits: 0,
     bumpCooldownUntil: 0,
+    bumpedAt: [],               // timestamps of points scored on this player
+    critterUntil: 0,            // > now while this player is a playable possum
     joinedAt: now,
   };
   world.players.set(id, p);
@@ -74,12 +79,30 @@ function setInput(world, id, input) {
 }
 
 const isPossum = (p, now) => p.possumUntil > now;
+const isCritter = (p, now) => p.critterUntil > now;
 
-function startPossum(world, p, now) {
+function startPossum(world, p, now, by = null) {
   p.possumUntil = now + CONSTS.possumMs;
   p.possumImmuneUntil = p.possumUntil + CONSTS.possumImmuneMs;
   p.possumHits = 0;
-  world.events.push({ type: 'possum', id: p.id, name: p.name, x: p.x, y: p.y });
+  world.events.push({ type: 'possum', id: p.id, name: p.name, x: p.x, y: p.y, by: by ? by.name : null });
+}
+
+function becomeCritter(world, p, now) {
+  p.critterUntil = now + CONSTS.critterMs;
+  p.possumUntil = 0;
+  p.possumImmuneUntil = 0;
+  p.possumHits = 0;
+  p.bumpedAt = [];
+  world.events.push({ type: 'transform', id: p.id, name: p.name, x: p.x, y: p.y });
+}
+
+/** Called when `p` has a full point scored on them. Three inside the window and they transform. */
+function noteBumped(world, p, now) {
+  const { bumpsToTransform, transformWindowMs } = CONSTS;
+  p.bumpedAt = p.bumpedAt.filter((t) => now - t <= transformWindowMs);
+  p.bumpedAt.push(now);
+  if (p.bumpedAt.length >= bumpsToTransform) becomeCritter(world, p, now);
 }
 
 function movePlayer(p, dt, now) {
@@ -87,6 +110,7 @@ function movePlayer(p, dt, now) {
     p.possumUntil = 0;
     p.possumHits = 0;
   }
+  if (p.critterUntil && now >= p.critterUntil) p.critterUntil = 0;
   const sp = CONSTS.speed * (isPossum(p, now) ? 0.5 : 1);
   let vx = 0, vy = 0;
   if (p.mode === 'keys') {
@@ -157,10 +181,25 @@ function collideOpossum(world, p, now) {
     dx /= d; dy /= d;
     p.x += dx * push; p.y += dy * push;
   }
-  if (!isPossum(p, now) && now >= p.possumImmuneUntil) {
+  if (!isPossum(p, now) && !isCritter(p, now) && now >= p.possumImmuneUntil) {
     p.ix += dx * 260; p.iy += dy * 260;
     startPossum(world, p, now);
   }
+}
+
+// A playable possum touching a player: the player plays dead, the possum scores.
+function critterTouch(world, critter, victim, nx, ny, now) {
+  if (isPossum(victim, now) || now < victim.possumImmuneUntil) return;
+  victim.ix += nx * 300; victim.iy += ny * 300;
+  startPossum(world, victim, now, critter);
+  critter.score += 1;
+  world.events.push({
+    type: 'bump', via: 'possum',
+    x: victim.x, y: victim.y,
+    scorer: critter.id, scorerName: critter.name,
+    victim: victim.id, victimName: victim.name,
+    partial: false, hits: 0, score: critter.score,
+  });
 }
 
 function resolvePair(world, a, b, now) {
@@ -173,6 +212,14 @@ function resolvePair(world, a, b, now) {
   const overlap = 2 * R - d;
   a.x -= nx * overlap / 2; a.y -= ny * overlap / 2;
   b.x += nx * overlap / 2; b.y += ny * overlap / 2;
+
+  const aCritter = isCritter(a, now), bCritter = isCritter(b, now);
+  if (aCritter || bCritter) {
+    if (aCritter && bCritter) return;          // two possums just bounce
+    if (aCritter) critterTouch(world, a, b, nx, ny, now);
+    else critterTouch(world, b, a, -nx, -ny, now);
+    return;
+  }
 
   // The higher player's bottom is touching the lower player's top.
   let top = a, bot = b, ndx = dx, ndy = dy;
@@ -195,12 +242,14 @@ function resolvePair(world, a, b, now) {
     if (bot.possumHits >= hitsToScore) {
       bot.possumHits = 0;
       top.score += 1;
+      noteBumped(world, bot, now);
     } else {
       ev.partial = true;
       ev.hits = bot.possumHits;
     }
   } else {
     top.score += 1;
+    noteBumped(world, bot, now);
   }
   if (!ev.partial) ev.score = top.score;
   world.events.push(ev);
@@ -225,6 +274,7 @@ function snapshot(world, now = Date.now()) {
   const players = [];
   for (const p of world.players.values()) {
     const possum = isPossum(p, now);
+    const critter = isCritter(p, now);
     players.push({
       id: p.id, name: p.name,
       x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10,
@@ -232,6 +282,8 @@ function snapshot(world, now = Date.now()) {
       possum,
       hits: possum ? p.possumHits : 0,
       possumLeft: possum ? p.possumUntil - now : 0,
+      critter,
+      critterLeft: critter ? p.critterUntil - now : 0,
     });
   }
   const o = world.opossum;
@@ -241,4 +293,4 @@ function snapshot(world, now = Date.now()) {
   };
 }
 
-module.exports = { ARENA, CONSTS, createWorld, addPlayer, removePlayer, setInput, step, snapshot, isPossum };
+module.exports = { ARENA, CONSTS, createWorld, addPlayer, removePlayer, setInput, step, snapshot, isPossum, isCritter };

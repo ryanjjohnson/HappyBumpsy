@@ -283,7 +283,7 @@
     const fillH = top ? Math.round(top.progress * zh) : 0;
     honkFill.setAttribute('y', zh - fillH);
     honkFill.setAttribute('height', fillH);
-    honkWho.textContent = top ? `${top.name} ${Math.ceil((1 - top.progress) * (C.goose ? C.goose.honkMs : 20000) / 1000)}s` : '';
+    honkWho.textContent = top ? `${top.name} ${Math.ceil((1 - top.progress) * (C.goose ? C.goose.honkMs : 15000) / 1000)}s` : '';
 
     if (joined) {
       if (me) {

@@ -21,7 +21,7 @@ const CONSTS = {
     ms: 20000,           // how long a goose stays
     possumMs: 20000,     // how long a goosed player plays dead
     penalty: 5,          // points lost when goosed
-    honkMs: 20000,       // hover in the HONK zone this long to summon one
+    honkMs: 15000,       // hover in the HONK zone this long to summon one
     honk: { x: 1400, y: 770, w: 180, h: 110 }, // bottom-right zone (top-left corner + size)
   },
   opossum: {

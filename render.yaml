@@ -1,0 +1,17 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Create the service once with "New > Blueprint" pointing at this repo, then let
+# GitHub Actions trigger deploys through the service's deploy hook (autoDeploy is off).
+services:
+  - type: web
+    name: happybumpsy
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: false
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATA_DIR
+        value: /opt/render/project/src/data

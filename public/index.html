@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HappyBumpsy</title>
+  <link rel="icon" href="img/face.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <svg id="arena" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" aria-label="HappyBumpsy arena">
+    <defs id="defs">
+      <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+        <path d="M80 0 H0 V80" fill="none" stroke="#2a3047" stroke-width="1"/>
+      </pattern>
+      <!-- full circle starting at the top, radius 60: the track the name-train runs on -->
+      <path id="ring-path" d="M 0 -60 A 60 60 0 1 1 -0.01 -60"/>
+    </defs>
+    <rect class="floor" width="1600" height="900" rx="8"/>
+    <rect class="floor-grid" width="1600" height="900" fill="url(#grid)"/>
+    <g id="layer-opossum"></g>
+    <g id="layer-players"></g>
+    <g id="layer-fx"></g>
+  </svg>
+
+  <div id="hud" hidden>
+    <div class="hud-me">
+      <span id="hud-name"></span>
+      <span id="hud-score" class="score">0</span>
+    </div>
+    <div id="hud-banner" class="banner" hidden></div>
+    <ol id="hud-board" class="board"></ol>
+    <div class="hud-help">
+      move: <kbd>mouse</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> &nbsp;·&nbsp; land your <b>bottom</b> on their <b>top</b>
+      <button id="leave" type="button">leave</button>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div class="panel">
+      <aside class="scores">
+        <section>
+          <h3>Now playing</h3>
+          <ol id="list-current"><li class="empty">nobody yet</li></ol>
+        </section>
+        <section>
+          <h3>Latest</h3>
+          <ol id="list-latest"><li class="empty">—</li></ol>
+        </section>
+        <section>
+          <h3>All time</h3>
+          <ol id="list-alltime"><li class="empty">—</li></ol>
+        </section>
+      </aside>
+      <form id="join" autocomplete="off">
+        <h1><img src="img/face.svg" alt="" width="56" height="56"> HappyBumpsy</h1>
+        <p class="rules">
+          Tap your opponent's <b>top</b> with your <b>bottom</b> for a point. Most points wins.<br>
+          Touch the opossum and you play dead for 5&nbsp;seconds: upside down, half speed, no bumping,
+          and it takes 10 taps to score on you.
+        </p>
+        <label for="name">What's your name?</label>
+        <div class="row">
+          <input id="name" name="name" maxlength="16" placeholder="bumpy mcbumpface" required autofocus>
+          <button type="submit">Play</button>
+        </div>
+        <p id="join-error" class="error" role="alert"></p>
+        <p class="hint">Move with the mouse or <kbd>WASD</kbd>. That's the arena behind you.</p>
+      </form>
+    </div>
+  </div>
+
+  <script src="client.js"></script>
+</body>
+</html>

@@ -18,6 +18,13 @@
     </defs>
     <rect class="floor" width="1600" height="900" rx="8"/>
     <rect class="floor-grid" width="1600" height="900" fill="url(#grid)"/>
+    <g id="honk-zone" transform="translate(1400 770)">
+      <rect class="honk-box" width="180" height="110" rx="12"/>
+      <clipPath id="honk-clip"><rect width="180" height="110" rx="12"/></clipPath>
+      <rect id="honk-fill" class="honk-fill" x="0" y="110" width="180" height="0" clip-path="url(#honk-clip)"/>
+      <text class="honk-label" x="90" y="70">HONK</text>
+      <text id="honk-who" class="honk-who" x="90" y="96"></text>
+    </g>
     <g id="layer-opossum"></g>
     <g id="layer-players"></g>
     <g id="layer-fx"></g>
@@ -59,7 +66,9 @@
           Touch the opossum and you play dead for 5&nbsp;seconds: upside down, half speed, no bumping,
           and it takes 10 taps to score on you.<br>
           Get scored on <b>3 times in 10&nbsp;seconds</b> and you <b>become</b> a possum for 10 seconds:
-          anyone you touch plays dead, and you get the point.
+          anyone you touch plays dead, and you get the point.<br>
+          Loiter in the <b>HONK</b> corner for 20&nbsp;seconds and a <b>goose</b> is released from the far corner.
+          It chases you first. A hit in the side costs 5 points and 20 seconds playing dead.
         </p>
         <label for="name">What's your name?</label>
         <div class="row">

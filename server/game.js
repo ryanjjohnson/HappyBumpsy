@@ -14,6 +14,16 @@ const CONSTS = {
   bumpsToTransform: 3,   // get scored on this many times...
   transformWindowMs: 10000, // ...within this window, and you turn into a possum
   critterMs: 10000,      // how long you stay a playable possum
+  goose: {
+    r: 40,               // collision radius
+    speed: 470,          // px / s, a bit faster than a player
+    steer: 6,            // how quickly it turns toward its target (per second)
+    ms: 20000,           // how long a goose stays
+    possumMs: 20000,     // how long a goosed player plays dead
+    penalty: 5,          // points lost when goosed
+    honkMs: 20000,       // hover in the HONK zone this long to summon one
+    honk: { x: 1400, y: 770, w: 180, h: 110 }, // bottom-right zone (top-left corner + size)
+  },
   opossum: {
     w: 200, h: 100,      // drawn size
     hw: 85, hh: 34,      // collision half-extents (a bit smaller than the drawing)
@@ -29,6 +39,7 @@ function createWorld(now = Date.now()) {
   return {
     players: new Map(),
     opossum: null,
+    goose: null,
     nextOpossumAt: now + rand(6000, 15000),
     events: [],
   };
@@ -53,6 +64,7 @@ function addPlayer(world, id, name, now = Date.now()) {
     bumpCooldownUntil: 0,
     bumpedAt: [],               // timestamps of points scored on this player
     critterUntil: 0,            // > now while this player is a playable possum
+    honkSince: 0,               // when this player entered the HONK zone (0 = not in it)
     joinedAt: now,
   };
   world.players.set(id, p);
@@ -81,8 +93,8 @@ function setInput(world, id, input) {
 const isPossum = (p, now) => p.possumUntil > now;
 const isCritter = (p, now) => p.critterUntil > now;
 
-function startPossum(world, p, now, by = null) {
-  p.possumUntil = now + CONSTS.possumMs;
+function startPossum(world, p, now, by = null, ms = CONSTS.possumMs) {
+  p.possumUntil = now + ms;
   p.possumImmuneUntil = p.possumUntil + CONSTS.possumImmuneMs;
   p.possumHits = 0;
   world.events.push({ type: 'possum', id: p.id, name: p.name, x: p.x, y: p.y, by: by ? by.name : null });
@@ -187,6 +199,98 @@ function collideOpossum(world, p, now) {
   }
 }
 
+// ---------- the goose ----------
+function inHonkZone(p) {
+  const z = CONSTS.goose.honk;
+  return p.x >= z.x && p.x <= z.x + z.w && p.y >= z.y && p.y <= z.y + z.h;
+}
+
+function spawnGoose(world, summoner, now) {
+  const g = CONSTS.goose;
+  world.goose = {
+    x: g.r + 10, y: g.r + 10,          // opposite corner from the HONK zone
+    vx: 0, vy: 0,
+    targetId: summoner.id,
+    until: now + g.ms,
+    bounceUntil: 0,
+    summoner: summoner.name,
+  };
+  world.events.push({ type: 'goose', id: summoner.id, name: summoner.name });
+}
+
+function chargeHonk(world, p, now) {
+  if (!inHonkZone(p) || isPossum(p, now) || isCritter(p, now)) { p.honkSince = 0; return; }
+  if (!p.honkSince) p.honkSince = now;
+  if (!world.goose && now - p.honkSince >= CONSTS.goose.honkMs) {
+    p.honkSince = 0;
+    spawnGoose(world, p, now);
+  }
+}
+
+function pickGooseTarget(world, g, now) {
+  const cur = world.players.get(g.targetId);
+  if (cur && !isPossum(cur, now)) return cur;
+  let best = null, bestD = Infinity;
+  for (const p of world.players.values()) {
+    if (isPossum(p, now)) continue;
+    const d = Math.hypot(p.x - g.x, p.y - g.y);
+    if (d < bestD) { best = p; bestD = d; }
+  }
+  g.targetId = best ? best.id : null;
+  return best;
+}
+
+function stepGoose(world, dt, now) {
+  const g = world.goose;
+  if (!g) return;
+  if (now >= g.until) { world.goose = null; world.events.push({ type: 'gooseGone' }); return; }
+  const C = CONSTS.goose;
+  let dx, dy;
+  if (now < g.bounceUntil) {
+    dx = g.vx; dy = g.vy;                      // keep going the way we bounced
+  } else {
+    const t = pickGooseTarget(world, g, now);
+    dx = (t ? t.x : ARENA.w / 2) - g.x;
+    dy = (t ? t.y : ARENA.h / 2) - g.y;
+  }
+  const d = Math.hypot(dx, dy) || 1;
+  const k = Math.min(1, C.steer * dt);
+  g.vx += (dx / d * C.speed - g.vx) * k;
+  g.vy += (dy / d * C.speed - g.vy) * k;
+  g.x = clamp(g.x + g.vx * dt, C.r, ARENA.w - C.r);
+  g.y = clamp(g.y + g.vy * dt, C.r, ARENA.h - C.r);
+}
+
+function collideGoose(world, p, now) {
+  const g = world.goose;
+  if (!g) return;
+  const C = CONSTS.goose;
+  const { R } = CONSTS;
+  let dx = p.x - g.x, dy = p.y - g.y;
+  let d = Math.hypot(dx, dy);
+  if (d >= R + C.r) return;
+  if (d < 0.001) { dx = 1; dy = 0; d = 1; }
+  const nx = dx / d, ny = dy / d;
+  const overlap = R + C.r - d;
+  p.x += nx * overlap; p.y += ny * overlap;     // the goose does not yield
+  if (Math.abs(nx) > Math.abs(ny)) {
+    // hit them in the side
+    if (isPossum(p, now) || now < p.possumImmuneUntil) return;
+    p.score = Math.max(0, p.score - C.penalty);
+    p.critterUntil = 0;
+    p.ix += nx * 400; p.iy += ny * 400;
+    startPossum(world, p, now, null, C.possumMs);
+    world.events.push({ type: 'goosed', id: p.id, name: p.name, x: p.x, y: p.y, score: p.score, penalty: C.penalty });
+    g.targetId = null;
+  } else {
+    // top or bottom: the goose bounces off and comes back around
+    g.vx = -g.vx * 0.5 + nx * -C.speed * 0.6;
+    g.vy = -ny * C.speed;
+    g.bounceUntil = now + 450;
+    p.iy += ny * 260;
+  }
+}
+
 // A playable possum touching a player: the player plays dead, the possum scores.
 function critterTouch(world, critter, victim, nx, ny, now) {
   if (isPossum(victim, now) || now < victim.possumImmuneUntil) return;
@@ -260,7 +364,10 @@ function step(world, dt, now = Date.now()) {
   const players = [...world.players.values()];
   for (const p of players) movePlayer(p, dt, now);
   stepOpossum(world, dt, now);
+  stepGoose(world, dt, now);
   for (const p of players) collideOpossum(world, p, now);
+  for (const p of players) collideGoose(world, p, now);
+  for (const p of players) chargeHonk(world, p, now);
   for (let i = 0; i < players.length; i++) {
     for (let j = i + 1; j < players.length; j++) resolvePair(world, players[i], players[j], now);
   }
@@ -286,11 +393,18 @@ function snapshot(world, now = Date.now()) {
       critterLeft: critter ? p.critterUntil - now : 0,
     });
   }
+  const honk = [];
+  for (const p of world.players.values()) {
+    if (p.honkSince) honk.push({ id: p.id, name: p.name, progress: Math.min(1, (now - p.honkSince) / CONSTS.goose.honkMs) });
+  }
   const o = world.opossum;
+  const g = world.goose;
   return {
     players,
     opossum: o ? { x: Math.round(o.x * 10) / 10, y: Math.round(o.y), dir: o.dir } : null,
+    goose: g ? { x: Math.round(g.x * 10) / 10, y: Math.round(g.y * 10) / 10, dir: g.vx < 0 ? -1 : 1, targetId: g.targetId, left: g.until - now } : null,
+    honk,
   };
 }
 
-module.exports = { ARENA, CONSTS, createWorld, addPlayer, removePlayer, setInput, step, snapshot, isPossum, isCritter };
+module.exports = { ARENA, CONSTS, createWorld, addPlayer, removePlayer, setInput, step, snapshot, isPossum, isCritter, inHonkZone };

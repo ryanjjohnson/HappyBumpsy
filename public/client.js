@@ -32,6 +32,9 @@
   let scores = { current: [], latest: [], allTime: [] };
   const els = new Map();
   let opEl = null;
+  let gooseEl = null;
+  const honkFill = $('#honk-fill');
+  const honkWho = $('#honk-who');
   let bannerTimer = 0;
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -191,6 +194,19 @@
     return opEl;
   }
 
+  function ensureGoose() {
+    if (gooseEl) return gooseEl;
+    const g = el('g', { id: 'goose-actor' });
+    const flip = el('g', {}, 'flip');
+    const bob = el('g', {}, 'bob');
+    bob.appendChild(useEl('#goose', { x: 0, y: 0, width: 200, height: 160 }));
+    flip.appendChild(bob);
+    g.appendChild(flip);
+    layerOp.appendChild(g);
+    gooseEl = { g, flip };
+    return gooseEl;
+  }
+
   let lastBoard = 0;
   function frame() {
     requestAnimationFrame(frame);
@@ -248,6 +264,27 @@
       opEl = null;
     }
 
+    const gs = cur.goose;
+    if (gs) {
+      const pg = prev && prev.goose;
+      const gx = pg ? lerp(pg.x, gs.x, alpha) : gs.x;
+      const gy = pg ? lerp(pg.y, gs.y, alpha) : gs.y;
+      const e = ensureGoose();
+      e.g.setAttribute('transform', `translate(${(gx - 100).toFixed(1)} ${(gy - 90).toFixed(1)})`);
+      e.flip.setAttribute('transform', gs.dir < 0 ? 'translate(200 0) scale(-1 1)' : '');
+    } else if (gooseEl) {
+      gooseEl.g.remove();
+      gooseEl = null;
+    }
+
+    const honk = cur.honk || [];
+    const top = honk.reduce((a, b) => (!a || b.progress > a.progress ? b : a), null);
+    const zh = C.goose ? C.goose.honk.h : 110;
+    const fillH = top ? Math.round(top.progress * zh) : 0;
+    honkFill.setAttribute('y', zh - fillH);
+    honkFill.setAttribute('height', fillH);
+    honkWho.textContent = top ? `${top.name} ${Math.ceil((1 - top.progress) * (C.goose ? C.goose.honkMs : 20000) / 1000)}s` : '';
+
     if (joined) {
       if (me) {
         hudScore.textContent = me.score;
@@ -273,6 +310,7 @@
   }
 
   function renderBoard(players) {
+    const chased = states.length && states[states.length - 1].goose ? states[states.length - 1].goose.targetId : null;
     const rows = [...players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 8);
     hudBoard.replaceChildren();
     for (const r of rows) {
@@ -280,6 +318,7 @@
       if (r.id === myId) li.classList.add('me');
       if (r.possum) li.classList.add('possum');
       if (r.critter) li.classList.add('critter');
+      if (r.id === chased) li.classList.add('chased');
       const n = document.createElement('span'); n.className = 'n'; n.textContent = r.name;
       const p = document.createElement('span'); p.className = 'p'; p.textContent = r.score;
       li.append(n, p);
@@ -312,6 +351,10 @@
         if (ev.partial) fx(ev.x, ev.y - 20, `${ev.hits}/${C.hitsToScore}`, 'partial');
         else if (ev.via === 'possum') fx(ev.x, ev.y - 20, ev.scorer === myId ? '+1 FLIPPED!' : '+1 🦝', '');
         else fx(ev.x, ev.y - 20, ev.scorer === myId ? '+1 BUMP!' : '+1', '');
+      } else if (ev.type === 'goose') {
+        showBanner(`🪿 ${ev.name} summoned a goose. RUN.`, 'goose', 4500);
+      } else if (ev.type === 'goosed') {
+        fx(ev.x, ev.y - 40, `HONK! −${ev.penalty}`, 'goosed');
       } else if (ev.type === 'transform') {
         fx(ev.x, ev.y - 70, `${ev.name} IS THE POSSUM NOW`, 'transform');
       } else if (ev.type === 'possum') {
@@ -424,7 +467,7 @@
     const saved = localStorage.getItem('happybumpsy.name');
     if (saved) nameInput.value = saved;
   } catch (_) {}
-  Promise.all([loadSymbol('face', 'img/face.svg'), loadSymbol('opossum', 'img/opossum.svg')])
+  Promise.all([loadSymbol('face', 'img/face.svg'), loadSymbol('opossum', 'img/opossum.svg'), loadSymbol('goose', 'img/goose.svg')])
     .catch((err) => console.error('could not load art', err))
     .finally(() => {
       connect();

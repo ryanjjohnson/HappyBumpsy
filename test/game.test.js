@@ -229,3 +229,91 @@ test('possum form wears off, and the wild opossum ignores a playable possum', ()
   assert.equal(game.isCritter(p, NOW + critterMs + 1), false);
   assert.equal(p.critterUntil, 0);
 });
+
+// ---------- HONK zone and the goose ----------
+const G = game.CONSTS.goose;
+const zoneCentre = { x: G.honk.x + G.honk.w / 2, y: G.honk.y + G.honk.h / 2 };
+
+test('loitering in the HONK zone for 20 seconds releases a goose from the opposite corner', () => {
+  const w = world();
+  const p = place(w, 'p', zoneCentre.x, zoneCentre.y);
+  assert.ok(game.inHonkZone(p));
+  game.step(w, DT, NOW);
+  game.step(w, DT, NOW + G.honkMs - 100);
+  assert.equal(w.goose, null, 'not yet');
+  assert.ok(game.snapshot(w, NOW + G.honkMs - 100).honk[0].progress > 0.99);
+  game.step(w, DT, NOW + G.honkMs);
+  assert.ok(w.goose, 'goose released');
+  assert.equal(w.goose.targetId, 'p');
+  assert.ok(w.goose.x < 100 && w.goose.y < 100, 'starts top-left');
+  assert.ok(w.events.some((e) => e.type === 'goose' && e.name === 'p'));
+});
+
+test('leaving the HONK zone resets the charge', () => {
+  const w = world();
+  const p = place(w, 'p', zoneCentre.x, zoneCentre.y);
+  game.step(w, DT, NOW);
+  p.x = 200; p.y = 200;
+  game.step(w, DT, NOW + G.honkMs / 2);
+  assert.equal(p.honkSince, 0);
+  p.x = zoneCentre.x; p.y = zoneCentre.y;
+  game.step(w, DT, NOW + G.honkMs + 1000);
+  assert.equal(w.goose, null);
+});
+
+test('the goose chases its summoner first', () => {
+  const w = world();
+  const p = place(w, 'p', 1300, 800);
+  const q = place(w, 'q', 100, 300); // much closer to the goose than the summoner
+  w.goose = { x: 60, y: 60, vx: 0, vy: 0, targetId: 'p', until: NOW + G.ms, bounceUntil: 0, summoner: 'p' };
+  game.step(w, 0.5, NOW);
+  assert.equal(w.goose.targetId, 'p');
+  assert.ok(w.goose.x > 60 && w.goose.y > 60, 'moving toward the summoner');
+  assert.ok(Math.hypot(q.x - 100, q.y - 300) < 1, 'q was not touched');
+});
+
+test('a hit in the side costs 5 points and 20 seconds playing dead, then the goose picks a new target', () => {
+  const w = world();
+  const p = place(w, 'p', 500, 400);
+  const q = place(w, 'q', 1200, 700);
+  p.score = 7;
+  w.goose = { x: 500 - R - G.r + 4, y: 400, vx: G.speed, vy: 0, targetId: 'p', until: NOW + G.ms, bounceUntil: 0, summoner: 'p' };
+  game.step(w, DT, NOW);
+  assert.equal(p.score, 2);
+  assert.equal(game.isPossum(p, NOW), true);
+  assert.equal(p.possumUntil, NOW + G.possumMs);
+  assert.ok(w.events.some((e) => e.type === 'goosed' && e.id === 'p' && e.penalty === 5));
+  game.step(w, DT, NOW + 50);
+  assert.equal(w.goose.targetId, 'q', 'moves on to the next player');
+});
+
+test('scores never go below zero and a top/bottom hit just bounces the goose', () => {
+  const w = world();
+  const p = place(w, 'p', 500, 400);
+  p.score = 2;
+  w.goose = { x: 500 - R - G.r + 4, y: 400, vx: G.speed, vy: 0, targetId: 'p', until: NOW + G.ms, bounceUntil: 0, summoner: 'p' };
+  game.step(w, DT, NOW);
+  assert.equal(p.score, 0);
+
+  const w2 = world();
+  const t = place(w2, 't', 500, 400);
+  t.score = 9;
+  w2.goose = { x: 500, y: 400 + R + G.r - 4, vx: 0, vy: -G.speed, targetId: 't', until: NOW + G.ms, bounceUntil: 0, summoner: 't' };
+  game.step(w2, DT, NOW);
+  assert.equal(t.score, 9);
+  assert.equal(game.isPossum(t, NOW), false);
+  assert.ok(w2.goose.bounceUntil > NOW);
+  assert.ok(w2.goose.vy > 0, 'bounced back downward');
+});
+
+test('the goose flies off after 20 seconds', () => {
+  const w = world();
+  place(w, 'p', 800, 450);
+  w.goose = { x: 60, y: 60, vx: 0, vy: 0, targetId: 'p', until: NOW + G.ms, bounceUntil: 0, summoner: 'p' };
+  game.step(w, DT, NOW + G.ms - 1);
+  assert.ok(w.goose);
+  game.step(w, DT, NOW + G.ms);
+  assert.equal(w.goose, null);
+  assert.ok(w.events.some((e) => e.type === 'gooseGone'));
+  assert.equal(game.snapshot(w, NOW).goose, null);
+});

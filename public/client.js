@@ -171,6 +171,10 @@
     jellyG.appendChild(el('ellipse', { cx: -12, cy: -6, rx: 10, ry: 6, fill: '#c9fbe4', opacity: .7 }));
     jellyG.appendChild(el('ellipse', { cx: 8, cy: 10, rx: 5, ry: 3, fill: '#c9fbe4', opacity: .5 }));
     body.appendChild(jellyG);
+    // penalty form: 👁️👄👁️
+    const eyesT = el('text', { x: 0, y: 10, 'font-size': 30, 'text-anchor': 'middle' }, 'eyes');
+    eyesT.textContent = '👁️👄👁️';
+    body.appendChild(eyesT);
     const ring = el('g', {}, 'ring');
     const text = el('text', {}, 'name');
     const tp = el('textPath', { startOffset: '0' });
@@ -187,7 +191,7 @@
     const badge = el('text', { x: 0, y: R + 40 }, 'badge');
     g.append(halo, body, zzz, hits, badge);
     layerPlayers.appendChild(g);
-    return { g, body, critter, hits, badge, zzz, score: -1, possum: null, isCritter: null, isJelly: null, lastX: p.x, facing: 1 };
+    return { g, body, critter, hits, badge, zzz, score: -1, possum: null, isCritter: null, isJelly: null, isEyes: null, lastX: p.x, facing: 1 };
   }
 
   function ensureOpossum() {
@@ -280,6 +284,10 @@
         e.isJelly = p.jelly;
         e.g.classList.toggle('jelly', p.jelly);
       }
+      if (e.isEyes !== p.eyes) {
+        e.isEyes = p.eyes;
+        e.g.classList.toggle('eyes', p.eyes);
+      }
       if (p.critter) {
         if (x < e.lastX - 0.5) e.facing = -1; else if (x > e.lastX + 0.5) e.facing = 1;
         e.critter.setAttribute('transform', e.facing < 0 ? 'scale(-1 1)' : '');
@@ -367,7 +375,9 @@
           showBanner(`🦝 YOU'RE THE POSSUM  ·  ${(me.critterLeft / 1000).toFixed(1)}s  ·  touch players to flip them`, 'critter', 0);
         } else if (me.possum) {
           showBanner(`PLAYIN' POSSUM  ·  ${(me.possumLeft / 1000).toFixed(1)}s  ·  half speed, can't bump`, 'possum', 0);
-        } else if (hudBanner.classList.contains('possum') || hudBanner.classList.contains('critter') || hudBanner.classList.contains('jelly')) {
+        } else if (me.eyes) {
+          showBanner(`👁️👄👁️  ·  ${(me.eyesLeft / 1000).toFixed(1)}s`, 'eyes', 0);
+        } else if (hudBanner.classList.contains('possum') || hudBanner.classList.contains('critter') || hudBanner.classList.contains('jelly') || hudBanner.classList.contains('eyes')) {
           hideBanner();
         }
       }
@@ -396,6 +406,7 @@
       if (r.id === chased) li.classList.add('chased');
       if (r.bot) li.classList.add('bot');
       if (r.jelly) li.classList.add('jelly');
+      if (r.eyes) li.classList.add('eyes');
       const n = document.createElement('span'); n.className = 'n'; n.textContent = r.name;
       const p = document.createElement('span'); p.className = 'p'; p.textContent = r.score;
       li.append(n, p);
@@ -442,7 +453,9 @@
       } else if (ev.type === 'goose') {
         showBanner(`🪿 ${ev.name} summoned a goose. RUN.`, 'goose', 4500);
       } else if (ev.type === 'goosed') {
-        fx(ev.x, ev.y - 40, `HONK! −${ev.penalty}`, 'goosed');
+        fx(ev.x, ev.y - 40, 'HONK!', 'goosed');
+      } else if (ev.type === 'eyes') {
+        fx(ev.x, ev.y + 70, '👁️👄👁️', 'eyesfx');
       } else if (ev.type === 'transform') {
         fx(ev.x, ev.y - 70, `${ev.name} IS THE POSSUM NOW`, 'transform');
       } else if (ev.type === 'possum') {

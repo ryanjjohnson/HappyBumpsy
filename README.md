@@ -16,13 +16,14 @@ Every tap is a point. Most points wins. Mind the opossum.
   Anyone you touch plays dead and you take the point. Nobody can score on you while you're the possum,
   and the wild opossum leaves you alone.
 - Loiter in the **HONK** box in the bottom-right corner for 15 seconds and a Canada goose is released from
-  the top-left corner. It chases players for 20 seconds, the summoner first. A hit in your **side** costs 5 points
-  and 20 seconds playing dead. Meet it with your top or bottom and it bounces off.
+  the top-left corner. It chases players for 20 seconds, the summoner first. A hit in your **side** means 20 seconds
+  playing dead and 30 seconds as 👁️👄👁️. Meet it with your top or bottom and it bounces off.
 - A **greylag goose** drifts through now and then, meandering up and down and parking herself in front of whoever's
   nearest. She usually brings 2 or 3 goslings in single file. She's harmless until someone bumps a gosling: then the
   head goes down and she sprints after them. Caught, you're a **quivering pile of mint jelly** for 10 seconds, unable
-  to move, and your score is set to zero. Once you've been jellied, bumping a gosling sets your score to **exactly 67**
+  to move, and 👁️👄👁️ for 30. Once you've been jellied, bumping a gosling sets your score to **exactly 67**
   (and re-arms her).
+- **No penalty ever costs points.** The 👁️👄👁️ form is purely cosmetic: you play on as normal, you just look like that.
 - Join an empty arena and two house bots show up: **Wuhhhhh** hunts you, **Heeeeeyyyyy** mostly wanders.
   They leave when the last human does, and they don't get on the score tables.
 - Scores stick around: the join screen shows who's playing now, the latest scores of people who left,

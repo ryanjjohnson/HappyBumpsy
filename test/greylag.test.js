@@ -80,7 +80,7 @@ test('the mother is a solid barrier, and harmless while calm', () => {
   assert.equal(game.isJelly(p, NOW), false);
 });
 
-test('bump a gosling and she goes nuts on you; caught, you are mint jelly with zero points', () => {
+test('bump a gosling and she goes nuts on you; caught, you are mint jelly (and 👁️👄👁️), no points lost', () => {
   const w = world();
   const g = parkGreylag(w, 400, 450, 2);
   const baby = g.goslings[1];
@@ -100,7 +100,8 @@ test('bump a gosling and she goes nuts on you; caught, you are mint jelly with z
   game.step(w, DT, NOW + 200);
   assert.equal(game.isJelly(p, NOW + 200), true);
   assert.equal(p.jellyUntil, NOW + 200 + GL.jellyMs);
-  assert.equal(p.score, 0);
+  assert.equal(p.score, 42, 'no points lost');
+  assert.equal(game.isEyes(p, NOW + 200), true);
   assert.equal(p.jellied, true);
   assert.equal(g.nuts, null, 'calm again');
   assert.ok(w.events.some((e) => e.type === 'jellied' && e.id === 'p'));

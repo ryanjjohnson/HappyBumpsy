@@ -31,6 +31,12 @@ button { font: inherit; cursor: pointer; }
 .player.jelly .face, .player.jelly .critter { display: none; }
 .player.jelly .jellyblob { display: block; animation: quiver .13s ease-in-out infinite alternate; transform-origin: 0 40px; }
 @keyframes quiver { from { transform: scale(1.04, .94) skewX(2deg); } to { transform: scale(.96, 1.06) skewX(-2deg); } }
+.player .eyes { display: none; paint-order: stroke; stroke: #000; stroke-width: 2px; }
+.player.eyes .face, .player.eyes .critter { display: none; }
+.player.eyes .eyes { display: block; }
+.player.eyes.jelly .eyes, .player.eyes.critter .eyes { display: none; }
+.player.eyes.jelly .jellyblob { display: block; }
+.player.eyes.critter .critter { display: block; }
 .player .halo { fill: none; stroke: #fff; stroke-width: 2; stroke-dasharray: 4 6; opacity: 0; }
 .player.me .halo { opacity: .8; animation: spin 12s linear infinite; transform-origin: 0 0; }
 .player .badge { font-size: 15px; font-weight: 800; fill: var(--accent); text-anchor: middle;
@@ -68,6 +74,9 @@ button { font: inherit; cursor: pointer; }
 .fx.jelly { fill: #7be3b0; font-size: 34px; animation-duration: 1.6s; }
 .fx.sixtyseven { fill: #ffd54a; font-size: 46px; animation-duration: 1.8s; }
 .banner.jelly { background: #1f4a38; color: #c9fbe4; }
+.banner.eyes { background: #3a3a3a; color: #fff; }
+.fx.eyesfx { font-size: 30px; animation-duration: 1.6s; }
+.board li.eyes .n::after { content: " 👁️👄👁️"; }
 .board li.jelly .n::after { content: " 🟢"; }
 
 /* opossum */

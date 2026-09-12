@@ -138,7 +138,7 @@ test('snapshot exposes what the client needs', () => {
   p.possumUntil = NOW + 3000;
   p.possumHits = 4;
   const s = game.snapshot(w, NOW);
-  assert.deepEqual(s.players, [{ id: 'p', name: 'p', x: 100, y: 100, score: 0, possum: true, hits: 4, possumLeft: 3000, critter: false, critterLeft: 0, bot: false, jelly: false, jellyLeft: 0, jellied: false }]);
+  assert.deepEqual(s.players, [{ id: 'p', name: 'p', x: 100, y: 100, score: 0, possum: true, hits: 4, possumLeft: 3000, critter: false, critterLeft: 0, bot: false, jelly: false, jellyLeft: 0, jellied: false, eyes: false, eyesLeft: 0 }]);
   assert.equal(s.opossum, null);
   game.removePlayer(w, 'p');
   assert.equal(game.snapshot(w, NOW).players.length, 0);
@@ -272,28 +272,38 @@ test('the goose chases its summoner first', () => {
   assert.ok(Math.hypot(q.x - 100, q.y - 300) < 1, 'q was not touched');
 });
 
-test('a hit in the side costs 5 points and 20 seconds playing dead, then the goose picks a new target', () => {
+test('a hit in the side means 20 seconds playing dead and 30 seconds as 👁️👄👁️, no points lost; then the goose picks a new target', () => {
   const w = world();
   const p = place(w, 'p', 500, 400);
   const q = place(w, 'q', 1200, 700);
   p.score = 7;
   w.goose = { x: 500 - R - G.r + 4, y: 400, vx: G.speed, vy: 0, targetId: 'p', until: NOW + G.ms, bounceUntil: 0, summoner: 'p' };
   game.step(w, DT, NOW);
-  assert.equal(p.score, 2);
+  assert.equal(p.score, 7, 'no points lost');
   assert.equal(game.isPossum(p, NOW), true);
   assert.equal(p.possumUntil, NOW + G.possumMs);
-  assert.ok(w.events.some((e) => e.type === 'goosed' && e.id === 'p' && e.penalty === 5));
+  assert.equal(game.isEyes(p, NOW), true);
+  assert.equal(p.eyesUntil, NOW + game.CONSTS.eyesMs);
+  assert.ok(w.events.some((e) => e.type === 'goosed' && e.id === 'p'));
+  assert.ok(w.events.some((e) => e.type === 'eyes' && e.id === 'p'));
+  const snap = game.snapshot(w, NOW).players.find((x) => x.id === 'p');
+  assert.equal(snap.eyes, true);
+  assert.equal(snap.eyesLeft, game.CONSTS.eyesMs);
   game.step(w, DT, NOW + 50);
   assert.equal(w.goose.targetId, 'q', 'moves on to the next player');
 });
 
-test('scores never go below zero and a top/bottom hit just bounces the goose', () => {
+test('👁️👄👁️ wears off after 30 seconds and a top/bottom hit just bounces the goose', () => {
   const w = world();
   const p = place(w, 'p', 500, 400);
   p.score = 2;
   w.goose = { x: 500 - R - G.r + 4, y: 400, vx: G.speed, vy: 0, targetId: 'p', until: NOW + G.ms, bounceUntil: 0, summoner: 'p' };
   game.step(w, DT, NOW);
-  assert.equal(p.score, 0);
+  assert.equal(p.score, 2);
+  w.goose = null;
+  game.step(w, DT, NOW + game.CONSTS.eyesMs + 1);
+  assert.equal(game.isEyes(p, NOW + game.CONSTS.eyesMs + 1), false);
+  assert.equal(p.eyesUntil, 0);
 
   const w2 = world();
   const t = place(w2, 't', 500, 400);

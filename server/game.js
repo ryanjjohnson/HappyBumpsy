@@ -14,13 +14,13 @@ const CONSTS = {
   bumpsToTransform: 3,   // get scored on this many times...
   transformWindowMs: 10000, // ...within this window, and you turn into a possum
   critterMs: 10000,      // how long you stay a playable possum
+  eyesMs: 30000,         // how long a penalty leaves you as 👁️👄👁️ (this replaces losing points)
   goose: {
     r: 40,               // collision radius
     speed: 470,          // px / s, a bit faster than a player
     steer: 6,            // how quickly it turns toward its target (per second)
     ms: 20000,           // how long a goose stays
     possumMs: 20000,     // how long a goosed player plays dead
-    penalty: 5,          // points lost when goosed
     honkMs: 15000,       // hover in the HONK zone this long to summon one
     honk: { x: 1400, y: 770, w: 180, h: 110 }, // bottom-right zone (top-left corner + size)
   },
@@ -80,6 +80,7 @@ function addPlayer(world, id, name, now = Date.now()) {
     critterUntil: 0,            // > now while this player is a playable possum
     honkSince: 0,               // when this player entered the HONK zone (0 = not in it)
     jellyUntil: 0,              // > now while this player is a quivering pile of mint jelly
+    eyesUntil: 0,               // > now while this player is 👁️👄👁️
     jellied: false,             // has been jellied at least once: the next gosling is worth exactly 67
     goslingCooldownUntil: 0,
     joinedAt: now,
@@ -110,6 +111,13 @@ function setInput(world, id, input) {
 const isPossum = (p, now) => p.possumUntil > now;
 const isCritter = (p, now) => p.critterUntil > now;
 const isJelly = (p, now) => p.jellyUntil > now;
+const isEyes = (p, now) => p.eyesUntil > now;
+
+/** The penalty for getting goosed or jellied: no points lost, you are just 👁️👄👁️ for a while. */
+function eyes(world, p, now) {
+  p.eyesUntil = now + CONSTS.eyesMs;
+  world.events.push({ type: 'eyes', id: p.id, name: p.name, x: p.x, y: p.y });
+}
 
 function startPossum(world, p, now, by = null, ms = CONSTS.possumMs) {
   p.possumUntil = now + ms;
@@ -142,6 +150,7 @@ function movePlayer(p, dt, now) {
   }
   if (p.critterUntil && now >= p.critterUntil) p.critterUntil = 0;
   if (p.jellyUntil && now >= p.jellyUntil) p.jellyUntil = 0;
+  if (p.eyesUntil && now >= p.eyesUntil) p.eyesUntil = 0;
   if (isJelly(p, now)) { p.ix = 0; p.iy = 0; return; }       // jelly does not move
   const sp = CONSTS.speed * (isPossum(p, now) ? 0.5 : 1);
   let vx = 0, vy = 0;
@@ -302,9 +311,9 @@ function jelly(world, p, now) {
   const C = CONSTS.greylag;
   p.jellyUntil = now + C.jellyMs;
   p.jellied = true;
-  p.score = 0;
   p.possumUntil = 0; p.critterUntil = 0; p.possumHits = 0; p.honkSince = 0;
   p.ix = 0; p.iy = 0;
+  eyes(world, p, now);
   world.events.push({ type: 'jellied', id: p.id, name: p.name, x: p.x, y: p.y });
 }
 
@@ -426,11 +435,11 @@ function collideGoose(world, p, now) {
   if (Math.abs(nx) > Math.abs(ny)) {
     // hit them in the side
     if (isPossum(p, now) || isJelly(p, now) || now < p.possumImmuneUntil) return;
-    p.score = Math.max(0, p.score - C.penalty);
     p.critterUntil = 0;
     p.ix += nx * 400; p.iy += ny * 400;
     startPossum(world, p, now, null, C.possumMs);
-    world.events.push({ type: 'goosed', id: p.id, name: p.name, x: p.x, y: p.y, score: p.score, penalty: C.penalty });
+    eyes(world, p, now);
+    world.events.push({ type: 'goosed', id: p.id, name: p.name, x: p.x, y: p.y });
     g.targetId = null;
   } else {
     // top or bottom: the goose bounces off and comes back around
@@ -548,6 +557,8 @@ function snapshot(world, now = Date.now()) {
       jelly: isJelly(p, now),
       jellyLeft: isJelly(p, now) ? p.jellyUntil - now : 0,
       jellied: !!p.jellied,
+      eyes: isEyes(p, now),
+      eyesLeft: isEyes(p, now) ? p.eyesUntil - now : 0,
     });
   }
   const honk = [];
@@ -570,4 +581,4 @@ function snapshot(world, now = Date.now()) {
   };
 }
 
-module.exports = { ARENA, CONSTS, createWorld, addPlayer, removePlayer, setInput, step, snapshot, isPossum, isCritter, isJelly, inHonkZone, spawnGreylag };
+module.exports = { ARENA, CONSTS, createWorld, addPlayer, removePlayer, setInput, step, snapshot, isPossum, isCritter, isJelly, isEyes, inHonkZone, spawnGreylag };

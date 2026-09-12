@@ -24,6 +24,18 @@ const CONSTS = {
     honkMs: 15000,       // hover in the HONK zone this long to summon one
     honk: { x: 1400, y: 770, w: 180, h: 110 }, // bottom-right zone (top-left corner + size)
   },
+  greylag: {
+    r: 46,               // body collision radius
+    speed: 150,          // vertical meander speed
+    driftSpeed: 55,      // horizontal creep toward whoever it is obstructing
+    nutsSpeed: 540,      // sprint when enraged
+    nutsMs: 15000,       // gives up the chase after this
+    jellyMs: 10000,      // how long you are a pile of mint jelly
+    sixtySeven: 67,      // the reward for hitting a gosling after you've been jellied
+    gosling: { r: 18, speed: 320, gap: 52 },
+    minGapMs: 25000, maxGapMs: 50000,   // time between visits
+    stayMin: 40000, stayMax: 70000,     // how long a visit lasts
+  },
   opossum: {
     w: 200, h: 100,      // drawn size
     hw: 85, hh: 34,      // collision half-extents (a bit smaller than the drawing)
@@ -40,6 +52,8 @@ function createWorld(now = Date.now()) {
     players: new Map(),
     opossum: null,
     goose: null,
+    greylag: null,
+    nextGreylagAt: now + rand(12000, 25000),
     nextOpossumAt: now + rand(6000, 15000),
     events: [],
   };
@@ -65,6 +79,9 @@ function addPlayer(world, id, name, now = Date.now()) {
     bumpedAt: [],               // timestamps of points scored on this player
     critterUntil: 0,            // > now while this player is a playable possum
     honkSince: 0,               // when this player entered the HONK zone (0 = not in it)
+    jellyUntil: 0,              // > now while this player is a quivering pile of mint jelly
+    jellied: false,             // has been jellied at least once: the next gosling is worth exactly 67
+    goslingCooldownUntil: 0,
     joinedAt: now,
   };
   world.players.set(id, p);
@@ -92,6 +109,7 @@ function setInput(world, id, input) {
 
 const isPossum = (p, now) => p.possumUntil > now;
 const isCritter = (p, now) => p.critterUntil > now;
+const isJelly = (p, now) => p.jellyUntil > now;
 
 function startPossum(world, p, now, by = null, ms = CONSTS.possumMs) {
   p.possumUntil = now + ms;
@@ -123,6 +141,8 @@ function movePlayer(p, dt, now) {
     p.possumHits = 0;
   }
   if (p.critterUntil && now >= p.critterUntil) p.critterUntil = 0;
+  if (p.jellyUntil && now >= p.jellyUntil) p.jellyUntil = 0;
+  if (isJelly(p, now)) { p.ix = 0; p.iy = 0; return; }       // jelly does not move
   const sp = CONSTS.speed * (isPossum(p, now) ? 0.5 : 1);
   let vx = 0, vy = 0;
   if (p.mode === 'keys') {
@@ -193,9 +213,139 @@ function collideOpossum(world, p, now) {
     dx /= d; dy /= d;
     p.x += dx * push; p.y += dy * push;
   }
-  if (!isPossum(p, now) && !isCritter(p, now) && now >= p.possumImmuneUntil) {
+  if (!isPossum(p, now) && !isCritter(p, now) && !isJelly(p, now) && now >= p.possumImmuneUntil) {
     p.ix += dx * 260; p.iy += dy * 260;
     startPossum(world, p, now);
+  }
+}
+
+// ---------- the greylag goose and her goslings ----------
+function spawnGreylag(world, now, goslingCount = null) {
+  const C = CONSTS.greylag;
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const x = dir > 0 ? -C.r - 30 : ARENA.w + C.r + 30;
+  const y = rand(150, ARENA.h - 150);
+  if (goslingCount === null) goslingCount = Math.random() < 0.75 ? (Math.random() < 0.5 ? 2 : 3) : 0;
+  const goslings = [];
+  for (let i = 0; i < goslingCount; i++) goslings.push({ x: x - dir * C.gosling.gap * (i + 1), y, dir });
+  world.greylag = {
+    x, y, vx: dir * C.speed, vy: 0, dir,
+    goslings,
+    wpY: y, wpUntil: 0,
+    until: now + rand(C.stayMin, C.stayMax),
+    leaving: false,
+    nuts: null,          // { targetId, until } while enraged
+  };
+  world.events.push({ type: 'greylag', goslings: goslingCount });
+}
+
+function stepGreylag(world, dt, now) {
+  const g = world.greylag;
+  if (!g) {
+    if (now >= world.nextGreylagAt) spawnGreylag(world, now);
+    return;
+  }
+  const C = CONSTS.greylag;
+  let vx, vy;
+  if (g.nuts) {
+    const t = world.players.get(g.nuts.targetId);
+    if (!t || now >= g.nuts.until || isJelly(t, now)) {
+      g.nuts = null;
+      world.events.push({ type: 'gooseCalm' });
+      vx = g.vx; vy = g.vy;
+    } else {
+      const dx = t.x - g.x, dy = t.y - g.y, d = Math.hypot(dx, dy) || 1;
+      const k = Math.min(1, 7 * dt);
+      g.vx += (dx / d * C.nutsSpeed - g.vx) * k;
+      g.vy += (dy / d * C.nutsSpeed - g.vy) * k;
+      vx = g.vx; vy = g.vy;
+    }
+  } else if (g.leaving || now >= g.until) {
+    g.leaving = true;
+    const dir = g.x < ARENA.w / 2 ? -1 : 1;
+    vx = dir * C.speed * 1.3; vy = 0;
+    g.vx = vx; g.vy = vy;
+  } else {
+    if (now >= g.wpUntil) { g.wpY = rand(C.r + 30, ARENA.h - C.r - 30); g.wpUntil = now + rand(1200, 3500); }
+    let best = null, bestD = Infinity;
+    for (const p of world.players.values()) {
+      const d = Math.hypot(p.x - g.x, p.y - g.y);
+      if (d < bestD) { best = p; bestD = d; }
+    }
+    const tx = best ? best.x : ARENA.w / 2;
+    vx = Math.abs(tx - g.x) > 25 ? Math.sign(tx - g.x) * C.driftSpeed : 0;
+    vy = Math.abs(g.wpY - g.y) > 12 ? Math.sign(g.wpY - g.y) * C.speed : 0;
+    g.vx = vx; g.vy = vy;
+  }
+  g.x += vx * dt;
+  g.y = clamp(g.y + vy * dt, C.r, ARENA.h - C.r);
+  if (Math.abs(vx) > 5) g.dir = vx < 0 ? -1 : 1;
+  if (g.leaving && (g.x < -C.r - 80 || g.x > ARENA.w + C.r + 80)) {
+    world.greylag = null;
+    world.nextGreylagAt = now + rand(C.minGapMs, C.maxGapMs);
+    return;
+  }
+  // goslings: follow the leader, single file
+  let leader = g;
+  for (const b of g.goslings) {
+    const dx = leader.x - b.x, dy = leader.y - b.y, d = Math.hypot(dx, dy);
+    if (d > C.gosling.gap) {
+      const s = Math.min(C.gosling.speed, (d - C.gosling.gap) / dt);
+      b.x += dx / d * s * dt; b.y += dy / d * s * dt;
+      if (Math.abs(dx) > 2) b.dir = dx < 0 ? -1 : 1;
+    }
+    leader = b;
+  }
+}
+
+function jelly(world, p, now) {
+  const C = CONSTS.greylag;
+  p.jellyUntil = now + C.jellyMs;
+  p.jellied = true;
+  p.score = 0;
+  p.possumUntil = 0; p.critterUntil = 0; p.possumHits = 0; p.honkSince = 0;
+  p.ix = 0; p.iy = 0;
+  world.events.push({ type: 'jellied', id: p.id, name: p.name, x: p.x, y: p.y });
+}
+
+function collideGreylag(world, p, now) {
+  const g = world.greylag;
+  if (!g || isJelly(p, now)) return;
+  const C = CONSTS.greylag;
+  const { R } = CONSTS;
+  // mother: a solid barrier, and the end of you if she is after you
+  {
+    let dx = p.x - g.x, dy = p.y - g.y, d = Math.hypot(dx, dy);
+    if (d < R + C.r) {
+      if (d < 0.001) { dx = 1; dy = 0; d = 1; }
+      const nx = dx / d, ny = dy / d;
+      p.x += nx * (R + C.r - d); p.y += ny * (R + C.r - d);
+      if (g.nuts && g.nuts.targetId === p.id) {
+        jelly(world, p, now);
+        g.nuts = null;
+        world.events.push({ type: 'gooseCalm' });
+        return;
+      }
+    }
+  }
+  // goslings: do not touch the babies
+  for (const b of g.goslings) {
+    let dx = p.x - b.x, dy = p.y - b.y, d = Math.hypot(dx, dy);
+    if (d >= R + C.gosling.r) continue;
+    if (d < 0.001) { dx = 1; dy = 0; d = 1; }
+    const nx = dx / d, ny = dy / d;
+    p.x += nx * (R + C.gosling.r - d); p.y += ny * (R + C.gosling.r - d);
+    if (now < p.goslingCooldownUntil) continue;
+    p.goslingCooldownUntil = now + 800;
+    if (p.jellied) {
+      p.jellied = false;
+      p.score = C.sixtySeven;
+      world.events.push({ type: 'sixtyseven', id: p.id, name: p.name, x: p.x, y: p.y, score: p.score });
+    } else if (!g.nuts || g.nuts.targetId !== p.id) {
+      g.nuts = { targetId: p.id, until: now + C.nutsMs };
+      world.events.push({ type: 'gooseNuts', id: p.id, name: p.name, x: p.x, y: p.y });
+    }
+    break;
   }
 }
 
@@ -219,7 +369,7 @@ function spawnGoose(world, summoner, now) {
 }
 
 function chargeHonk(world, p, now) {
-  if (!inHonkZone(p) || isPossum(p, now) || isCritter(p, now)) { p.honkSince = 0; return; }
+  if (!inHonkZone(p) || isPossum(p, now) || isCritter(p, now) || isJelly(p, now)) { p.honkSince = 0; return; }
   if (!p.honkSince) p.honkSince = now;
   if (!world.goose && now - p.honkSince >= CONSTS.goose.honkMs) {
     p.honkSince = 0;
@@ -275,7 +425,7 @@ function collideGoose(world, p, now) {
   p.x += nx * overlap; p.y += ny * overlap;     // the goose does not yield
   if (Math.abs(nx) > Math.abs(ny)) {
     // hit them in the side
-    if (isPossum(p, now) || now < p.possumImmuneUntil) return;
+    if (isPossum(p, now) || isJelly(p, now) || now < p.possumImmuneUntil) return;
     p.score = Math.max(0, p.score - C.penalty);
     p.critterUntil = 0;
     p.ix += nx * 400; p.iy += ny * 400;
@@ -293,7 +443,7 @@ function collideGoose(world, p, now) {
 
 // A playable possum touching a player: the player plays dead, the possum scores.
 function critterTouch(world, critter, victim, nx, ny, now) {
-  if (isPossum(victim, now) || now < victim.possumImmuneUntil) return;
+  if (isPossum(victim, now) || isJelly(victim, now) || now < victim.possumImmuneUntil) return;
   victim.ix += nx * 300; victim.iy += ny * 300;
   startPossum(world, victim, now, critter);
   critter.score += 1;
@@ -317,6 +467,7 @@ function resolvePair(world, a, b, now) {
   a.x -= nx * overlap / 2; a.y -= ny * overlap / 2;
   b.x += nx * overlap / 2; b.y += ny * overlap / 2;
 
+  if (isJelly(a, now) || isJelly(b, now)) return;   // jelly has no top, no bottom, and no opinions
   const aCritter = isCritter(a, now), bCritter = isCritter(b, now);
   if (aCritter || bCritter) {
     if (aCritter && bCritter) return;          // two possums just bounce
@@ -365,8 +516,10 @@ function step(world, dt, now = Date.now()) {
   for (const p of players) movePlayer(p, dt, now);
   stepOpossum(world, dt, now);
   stepGoose(world, dt, now);
+  stepGreylag(world, dt, now);
   for (const p of players) collideOpossum(world, p, now);
   for (const p of players) collideGoose(world, p, now);
+  for (const p of players) collideGreylag(world, p, now);
   for (const p of players) chargeHonk(world, p, now);
   for (let i = 0; i < players.length; i++) {
     for (let j = i + 1; j < players.length; j++) resolvePair(world, players[i], players[j], now);
@@ -392,6 +545,9 @@ function snapshot(world, now = Date.now()) {
       critter,
       critterLeft: critter ? p.critterUntil - now : 0,
       bot: !!p.bot,
+      jelly: isJelly(p, now),
+      jellyLeft: isJelly(p, now) ? p.jellyUntil - now : 0,
+      jellied: !!p.jellied,
     });
   }
   const honk = [];
@@ -400,12 +556,18 @@ function snapshot(world, now = Date.now()) {
   }
   const o = world.opossum;
   const g = world.goose;
+  const gl = world.greylag;
   return {
     players,
+    greylag: gl ? {
+      x: Math.round(gl.x * 10) / 10, y: Math.round(gl.y * 10) / 10, dir: gl.dir,
+      nuts: gl.nuts ? gl.nuts.targetId : null,
+      goslings: gl.goslings.map((b) => ({ x: Math.round(b.x * 10) / 10, y: Math.round(b.y * 10) / 10, dir: b.dir })),
+    } : null,
     opossum: o ? { x: Math.round(o.x * 10) / 10, y: Math.round(o.y), dir: o.dir } : null,
     goose: g ? { x: Math.round(g.x * 10) / 10, y: Math.round(g.y * 10) / 10, dir: g.vx < 0 ? -1 : 1, targetId: g.targetId, left: g.until - now } : null,
     honk,
   };
 }
 
-module.exports = { ARENA, CONSTS, createWorld, addPlayer, removePlayer, setInput, step, snapshot, isPossum, isCritter, inHonkZone };
+module.exports = { ARENA, CONSTS, createWorld, addPlayer, removePlayer, setInput, step, snapshot, isPossum, isCritter, isJelly, inHonkZone, spawnGreylag };

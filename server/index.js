@@ -65,7 +65,7 @@ wss.on('connection', (ws, req) => {
     consts: {
       R: game.CONSTS.R, hitsToScore: game.CONSTS.hitsToScore, possumMs: game.CONSTS.possumMs,
       bumpsToTransform: game.CONSTS.bumpsToTransform, transformWindowMs: game.CONSTS.transformWindowMs,
-      critterMs: game.CONSTS.critterMs, opossum: game.CONSTS.opossum, goose: game.CONSTS.goose,
+      critterMs: game.CONSTS.critterMs, opossum: game.CONSTS.opossum, goose: game.CONSTS.goose, greylag: game.CONSTS.greylag,
     },
     ...scores.summary(world),
   });

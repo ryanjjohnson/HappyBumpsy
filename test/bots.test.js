@@ -29,6 +29,8 @@ test('bots are flagged in snapshots and drive the normal input path', () => {
   const human = game.addPlayer(w, '1', 'ryan', NOW);
   human.x = 800; human.y = 450;
   bots.sync(w, NOW);
+  const wuh0 = w.players.get('bot-wuh'); wuh0.x = 100; wuh0.y = 100;   // pin the start so the run is deterministic
+  const hey0 = w.players.get('bot-hey'); hey0.x = 1500; hey0.y = 800;
   for (let i = 0; i < 30; i++) { bots.think(w, NOW + i * 100); game.step(w, 0.1, NOW + i * 100); }
   const snap = game.snapshot(w, NOW + 3000);
   assert.deepEqual(snap.players.map((p) => p.bot), [false, true, true]);

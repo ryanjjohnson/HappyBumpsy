@@ -27,6 +27,10 @@ button { font: inherit; cursor: pointer; }
 .player.critter .face { display: none; }
 .player.critter .critter { display: block; }
 .player.critter .critter use { animation: waddle .5s ease-in-out infinite; transform-origin: 0 0; }
+.player .jellyblob { display: none; }
+.player.jelly .face, .player.jelly .critter { display: none; }
+.player.jelly .jellyblob { display: block; animation: quiver .13s ease-in-out infinite alternate; transform-origin: 0 40px; }
+@keyframes quiver { from { transform: scale(1.04, .94) skewX(2deg); } to { transform: scale(.96, 1.06) skewX(-2deg); } }
 .player .halo { fill: none; stroke: #fff; stroke-width: 2; stroke-dasharray: 4 6; opacity: 0; }
 .player.me .halo { opacity: .8; animation: spin 12s linear infinite; transform-origin: 0 0; }
 .player .badge { font-size: 15px; font-weight: 800; fill: var(--accent); text-anchor: middle;
@@ -54,6 +58,17 @@ button { font: inherit; cursor: pointer; }
 .board li.chased .n::after { content: " 🪿"; }
 .board li.bot .n, .scores li.bot .n { opacity: .75; }
 .board li.bot .n::before, .scores li.bot .n::before { content: "🤖 "; }
+
+/* greylag + goslings */
+#greylag-actor .bob { animation: bob .7s ease-in-out infinite; transform-origin: 95px 90px; transform-box: view-box; }
+#greylag-actor.nuts .bob { animation: bob .22s ease-in-out infinite; }
+.gosling .bob { animation: bob .35s ease-in-out infinite; transform-origin: 28px 40px; transform-box: view-box; }
+.gosling.gone { display: none; }
+.fx.nuts { fill: #ff6b6b; font-size: 30px; animation-duration: 1.4s; }
+.fx.jelly { fill: #7be3b0; font-size: 34px; animation-duration: 1.6s; }
+.fx.sixtyseven { fill: #ffd54a; font-size: 46px; animation-duration: 1.8s; }
+.banner.jelly { background: #1f4a38; color: #c9fbe4; }
+.board li.jelly .n::after { content: " 🟢"; }
 
 /* opossum */
 #opossum-actor .waddle { animation: waddle .6s ease-in-out infinite; transform-origin: 100px 60px; transform-box: view-box; }

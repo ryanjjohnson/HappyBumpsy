@@ -86,6 +86,14 @@ function aggressive(world, p, now) {
     const gx = g.x - p.x, gy = g.y - p.y, d = Math.hypot(gx, gy) || 1;
     if (d < 340) { tx = p.x - gx / d * 320; ty = p.y - gy / d * 320; }
   }
+  const gl = world.greylag;
+  if (gl) {
+    const threats = gl.nuts && gl.nuts.targetId === p.id ? [gl, ...gl.goslings] : gl.goslings;
+    for (const th of threats) {
+      const hx = th.x - p.x, hy = th.y - p.y, d = Math.hypot(hx, hy) || 1;
+      if (d < 200) { tx = p.x - hx / d * 300; ty = p.y - hy / d * 300; break; }
+    }
+  }
   aim(p, tx + b.jitter.x, ty + b.jitter.y);
 }
 

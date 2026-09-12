@@ -33,6 +33,8 @@
   const els = new Map();
   let opEl = null;
   let gooseEl = null;
+  let greylagEl = null;
+  const goslingEls = [];
   const honkFill = $('#honk-fill');
   const honkWho = $('#honk-who');
   let bannerTimer = 0;
@@ -163,6 +165,12 @@
     const cw = 2 * R * 1.5, ch = cw / 2;
     critter.appendChild(useEl('#opossum', { x: -cw / 2, y: -ch / 2 + 6, width: cw, height: ch }));
     body.appendChild(critter);
+    // mint-jelly form: a quivering green pile
+    const jellyG = el('g', {}, 'jellyblob');
+    jellyG.appendChild(el('path', { d: `M${-R - 6} ${R - 4} C ${-R - 10} ${R - 30}, ${-R + 4} ${-R + 10}, 0 ${-R + 14} C ${R - 4} ${-R + 10}, ${R + 10} ${R - 30}, ${R + 6} ${R - 4} Z`, fill: '#7be3b0', stroke: '#2f9c6a', 'stroke-width': 2 }));
+    jellyG.appendChild(el('ellipse', { cx: -12, cy: -6, rx: 10, ry: 6, fill: '#c9fbe4', opacity: .7 }));
+    jellyG.appendChild(el('ellipse', { cx: 8, cy: 10, rx: 5, ry: 3, fill: '#c9fbe4', opacity: .5 }));
+    body.appendChild(jellyG);
     const ring = el('g', {}, 'ring');
     const text = el('text', {}, 'name');
     const tp = el('textPath', { startOffset: '0' });
@@ -179,7 +187,7 @@
     const badge = el('text', { x: 0, y: R + 40 }, 'badge');
     g.append(halo, body, zzz, hits, badge);
     layerPlayers.appendChild(g);
-    return { g, body, critter, hits, badge, zzz, score: -1, possum: null, isCritter: null, lastX: p.x, facing: 1 };
+    return { g, body, critter, hits, badge, zzz, score: -1, possum: null, isCritter: null, isJelly: null, lastX: p.x, facing: 1 };
   }
 
   function ensureOpossum() {
@@ -206,6 +214,33 @@
     layerOp.appendChild(g);
     gooseEl = { g, flip };
     return gooseEl;
+  }
+
+  function ensureGreylag() {
+    if (greylagEl) return greylagEl;
+    const g = el('g', { id: 'greylag-actor' });
+    const flip = el('g', {}, 'flip');
+    const bob = el('g', {}, 'bob');
+    const use = useEl('#greylag', { x: 0, y: 0, width: 190, height: 152 });
+    bob.appendChild(use);
+    flip.appendChild(bob);
+    g.appendChild(flip);
+    layerOp.appendChild(g);
+    greylagEl = { g, flip, use, nuts: null };
+    return greylagEl;
+  }
+  function ensureGosling(i) {
+    while (goslingEls.length <= i) {
+      const g = el('g', {}, 'gosling');
+      const flip = el('g', {}, 'flip');
+      const bob = el('g', {}, 'bob');
+      bob.appendChild(useEl('#gosling', { x: 0, y: 0, width: 56, height: 56 }));
+      flip.appendChild(bob);
+      g.appendChild(flip);
+      layerOp.appendChild(g);
+      goslingEls.push({ g, flip });
+    }
+    return goslingEls[i];
   }
 
   let lastBoard = 0;
@@ -240,6 +275,10 @@
       if (e.isCritter !== p.critter) {
         e.isCritter = p.critter;
         e.g.classList.toggle('critter', p.critter);
+      }
+      if (e.isJelly !== p.jelly) {
+        e.isJelly = p.jelly;
+        e.g.classList.toggle('jelly', p.jelly);
       }
       if (p.critter) {
         if (x < e.lastX - 0.5) e.facing = -1; else if (x > e.lastX + 0.5) e.facing = 1;
@@ -278,6 +317,39 @@
       gooseEl = null;
     }
 
+    const gl = cur.greylag;
+    if (gl) {
+      const pgl = prev && prev.greylag;
+      const glx = pgl ? lerp(pgl.x, gl.x, alpha) : gl.x;
+      const gly = pgl ? lerp(pgl.y, gl.y, alpha) : gl.y;
+      const e = ensureGreylag();
+      e.g.setAttribute('transform', `translate(${(glx - 95).toFixed(1)} ${(gly - 86).toFixed(1)})`);
+      e.flip.setAttribute('transform', gl.dir < 0 ? 'translate(190 0) scale(-1 1)' : '');
+      const nuts = !!gl.nuts;
+      if (e.nuts !== nuts) {
+        e.nuts = nuts;
+        e.g.classList.toggle('nuts', nuts);
+        const href = nuts ? '#greylag-nuts' : '#greylag';
+        e.use.setAttribute('href', href);
+        e.use.setAttributeNS(XLINK, 'xlink:href', href);
+      }
+      gl.goslings.forEach((b, i) => {
+        const pb = pgl && pgl.goslings[i];
+        const bx = pb ? lerp(pb.x, b.x, alpha) : b.x;
+        const by = pb ? lerp(pb.y, b.y, alpha) : b.y;
+        const ge = ensureGosling(i);
+        ge.g.setAttribute('transform', `translate(${(bx - 28).toFixed(1)} ${(by - 34).toFixed(1)})`);
+        ge.flip.setAttribute('transform', b.dir < 0 ? 'translate(56 0) scale(-1 1)' : '');
+        ge.g.classList.remove('gone');
+      });
+      for (let i = gl.goslings.length; i < goslingEls.length; i++) goslingEls[i].g.classList.add('gone');
+    } else if (greylagEl) {
+      greylagEl.g.remove();
+      greylagEl = null;
+      for (const ge of goslingEls) ge.g.remove();
+      goslingEls.length = 0;
+    }
+
     const honk = cur.honk || [];
     const top = honk.reduce((a, b) => (!a || b.progress > a.progress ? b : a), null);
     const zh = C.goose ? C.goose.honk.h : 110;
@@ -289,11 +361,13 @@
     if (joined) {
       if (me) {
         hudScore.textContent = me.score;
-        if (me.critter) {
+        if (me.jelly) {
+          showBanner(`🟢 YOU ARE MINT JELLY  ·  ${(me.jellyLeft / 1000).toFixed(1)}s  ·  quiver quietly`, 'jelly', 0);
+        } else if (me.critter) {
           showBanner(`🦝 YOU'RE THE POSSUM  ·  ${(me.critterLeft / 1000).toFixed(1)}s  ·  touch players to flip them`, 'critter', 0);
         } else if (me.possum) {
           showBanner(`PLAYIN' POSSUM  ·  ${(me.possumLeft / 1000).toFixed(1)}s  ·  half speed, can't bump`, 'possum', 0);
-        } else if (hudBanner.classList.contains('possum') || hudBanner.classList.contains('critter')) {
+        } else if (hudBanner.classList.contains('possum') || hudBanner.classList.contains('critter') || hudBanner.classList.contains('jelly')) {
           hideBanner();
         }
       }
@@ -321,6 +395,7 @@
       if (r.critter) li.classList.add('critter');
       if (r.id === chased) li.classList.add('chased');
       if (r.bot) li.classList.add('bot');
+      if (r.jelly) li.classList.add('jelly');
       const n = document.createElement('span'); n.className = 'n'; n.textContent = r.name;
       const p = document.createElement('span'); p.className = 'p'; p.textContent = r.score;
       li.append(n, p);
@@ -353,6 +428,15 @@
         if (ev.partial) fx(ev.x, ev.y - 20, `${ev.hits}/${C.hitsToScore}`, 'partial');
         else if (ev.via === 'possum') fx(ev.x, ev.y - 20, ev.scorer === myId ? '+1 FLIPPED!' : '+1 🦝', '');
         else fx(ev.x, ev.y - 20, ev.scorer === myId ? '+1 BUMP!' : '+1', '');
+      } else if (ev.type === 'greylag') {
+        if (joined) showBanner(ev.goslings ? `🪿 a greylag goose is passing through with ${ev.goslings} goslings. Do NOT touch the babies.` : '🪿 a greylag goose is passing through. She seems calm.', '', 5000);
+      } else if (ev.type === 'gooseNuts') {
+        fx(ev.x, ev.y - 60, 'MAMA IS COMING', 'nuts');
+        if (ev.id === myId) showBanner('🪿 you touched a baby. RUN.', 'goose', 3000);
+      } else if (ev.type === 'jellied') {
+        fx(ev.x, ev.y - 60, 'MINT JELLY', 'jelly');
+      } else if (ev.type === 'sixtyseven') {
+        fx(ev.x, ev.y - 60, '67!', 'sixtyseven');
       } else if (ev.type === 'bots') {
         if (joined) showBanner(`🤖 ${ev.names.join(' and ')} wandered in to keep you company`, '', 4000);
       } else if (ev.type === 'goose') {
@@ -471,7 +555,7 @@
     const saved = localStorage.getItem('happybumpsy.name');
     if (saved) nameInput.value = saved;
   } catch (_) {}
-  Promise.all([loadSymbol('face', 'img/face.svg'), loadSymbol('opossum', 'img/opossum.svg'), loadSymbol('goose', 'img/goose.svg')])
+  Promise.all([loadSymbol('face', 'img/face.svg'), loadSymbol('opossum', 'img/opossum.svg'), loadSymbol('goose', 'img/goose.svg'), loadSymbol('greylag', 'img/greylag.svg'), loadSymbol('greylag-nuts', 'img/greylag-nuts.svg'), loadSymbol('gosling', 'img/gosling.svg')])
     .catch((err) => console.error('could not load art', err))
     .finally(() => {
       connect();

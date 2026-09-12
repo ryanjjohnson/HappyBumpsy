@@ -23,6 +23,8 @@ Every tap is a point. Most points wins. Mind the opossum.
   head goes down and she sprints after them. Caught, you're a **quivering pile of mint jelly** for 10 seconds, unable
   to move, and 👁️👄👁️ for 30. Once you've been jellied, bumping a gosling sets your score to **exactly 67**
   (and re-arms her).
+- A **safe zone** on the left has room for four. Inside it nobody can bump you, you can't bump anyone, and every
+  hazard ignores you (the geese retarget). While you stand in it, the rules are overlaid on the arena.
 - **No penalty ever costs points.** The 👁️👄👁️ form is purely cosmetic: you play on as normal, you just look like that.
 - Join an empty arena and two house bots show up: **Wuhhhhh** hunts you, **Heeeeeyyyyy** mostly wanders.
   They leave when the last human does, and they don't get on the score tables.

@@ -18,6 +18,11 @@
     </defs>
     <rect class="floor" width="1600" height="900" rx="8"/>
     <rect class="floor-grid" width="1600" height="900" fill="url(#grid)"/>
+    <g id="safe-zone" transform="translate(20 250)">
+      <rect class="safe-box" width="210" height="400" rx="14"/>
+      <text class="safe-label" x="105" y="34">SAFE ZONE</text>
+      <text class="safe-sub" x="105" y="56">nothing can touch you here</text>
+    </g>
     <g id="honk-zone" transform="translate(1400 770)">
       <rect class="honk-box" width="180" height="110" rx="12"/>
       <clipPath id="honk-clip"><rect width="180" height="110" rx="12"/></clipPath>
@@ -30,6 +35,19 @@
     <g id="layer-fx"></g>
   </svg>
 
+  <div id="rules" hidden>
+    <h2>🛡️ Safe zone · the rules</h2>
+    <ul>
+      <li><b>Score:</b> land your <b>bottom</b> on someone's <b>top</b>. +1. Side contact just bounces.</li>
+      <li><b>Move:</b> mouse, touch, or <kbd>WASD</kbd>. Last one used wins.</li>
+      <li><b>Opossum:</b> touch it and you play dead for 5 s: upside down, half speed, can't bump. It takes 10 taps to score on you.</li>
+      <li><b>Rage possum:</b> get scored on 3× in 10 s and you become a possum for 10 s. Anyone you touch plays dead and you get the point.</li>
+      <li><b>HONK:</b> loiter in the bottom-right box for 15 s to release a Canada goose from the top-left. It chases for 20 s, you first. A hit in your <b>side</b>: 20 s playing dead and 30 s as 👁️👄👁️. Top or bottom just bounces it.</li>
+      <li><b>Greylag goose:</b> wanders with her goslings and gets in the way. Bump a gosling and she hunts you. Caught: mint jelly for 10 s, 👁️👄👁️ for 30 s. Bump a gosling after that: exactly 67 points.</li>
+      <li><b>Nothing ever costs points.</b> Penalties are cosmetic.</li>
+      <li><b>Safe zone:</b> this box. No bumps for or against you, hazards ignore you. Step out to play.</li>
+    </ul>
+  </div>
   <div id="hud" hidden>
     <div class="hud-me">
       <span id="hud-name"></span>

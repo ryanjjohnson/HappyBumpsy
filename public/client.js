@@ -18,6 +18,7 @@
   const hudBoard = $('#hud-board');
   const hudBanner = $('#hud-banner');
   const leaveBtn = $('#leave');
+  const rulesEl = $('#rules');
   const lists = { current: $('#list-current'), latest: $('#list-latest'), allTime: $('#list-alltime') };
 
   let ARENA = { w: 1600, h: 900 };
@@ -369,6 +370,7 @@
     if (joined) {
       if (me) {
         hudScore.textContent = me.score;
+        if (rulesEl.hidden === !!me.safe) rulesEl.hidden = !me.safe;
         if (me.jelly) {
           showBanner(`🟢 YOU ARE MINT JELLY  ·  ${(me.jellyLeft / 1000).toFixed(1)}s  ·  quiver quietly`, 'jelly', 0);
         } else if (me.critter) {
@@ -407,6 +409,7 @@
       if (r.bot) li.classList.add('bot');
       if (r.jelly) li.classList.add('jelly');
       if (r.eyes) li.classList.add('eyes');
+      if (r.safe) li.classList.add('safe');
       const n = document.createElement('span'); n.className = 'n'; n.textContent = r.name;
       const p = document.createElement('span'); p.className = 'p'; p.textContent = r.score;
       li.append(n, p);
@@ -559,6 +562,7 @@
     send({ type: 'leave' });
     hud.hidden = true;
     overlay.hidden = false;
+    rulesEl.hidden = true;
     hideBanner();
     nameInput.focus();
   });

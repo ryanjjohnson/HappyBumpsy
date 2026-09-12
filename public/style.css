@@ -50,6 +50,19 @@ button { font: inherit; cursor: pointer; }
 @keyframes spin { to { transform: rotate(-360deg); } }
 @keyframes zzz { 50% { transform: translateY(-6px); } }
 
+/* safe zone */
+.safe-box { fill: #16302a; stroke: #3fae8a; stroke-width: 2; stroke-dasharray: 10 6; }
+.safe-label { font-size: 26px; font-weight: 900; fill: #5fd3aa; text-anchor: middle; letter-spacing: 3px; pointer-events: none; }
+.safe-sub { font-size: 13px; font-weight: 600; fill: #3fae8a; text-anchor: middle; pointer-events: none; }
+#rules { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); width: min(460px, 60vw); padding: 16px 20px; border-radius: 14px; z-index: 5;
+  background: rgba(14, 30, 26, .92); border: 1px solid #3fae8a; color: #e6fff5; box-shadow: 0 10px 40px #0009; pointer-events: none; }
+#rules[hidden] { display: none; }
+#rules h2 { margin: 0 0 10px; font-size: 18px; color: #7be3b0; }
+#rules ul { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.45; }
+#rules li { margin-bottom: 6px; }
+#rules b { color: #fff; }
+.board li.safe .n::after { content: " 🛡️"; }
+
 /* HONK zone + goose */
 .honk-box { fill: #2a1f2e; stroke: #6a4a7a; stroke-width: 2; stroke-dasharray: 8 6; }
 .honk-fill { fill: #b45cff; opacity: .45; }

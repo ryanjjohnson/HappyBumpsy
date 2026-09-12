@@ -62,7 +62,7 @@ function aggressive(world, p, now) {
     b.jitter = { x: rand(-70, 70), y: rand(-45, 45) };
     b.jitterUntil = now + rand(500, 1200);
   }
-  const t = nearest(world, p, (o) => !game.isPossum(o, now)) || nearest(world, p, () => true);
+  const t = nearest(world, p, (o) => !game.isPossum(o, now) && !game.inSafeZone(o)) || nearest(world, p, (o) => !game.inSafeZone(o));
   let tx, ty;
   if (!t) {
     tx = ARENA.w / 2 + Math.sin(now / 1500) * 400;

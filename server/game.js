@@ -15,6 +15,7 @@ const CONSTS = {
   transformWindowMs: 10000, // ...within this window, and you turn into a possum
   critterMs: 10000,      // how long you stay a playable possum
   eyesMs: 30000,         // how long a penalty leaves you as 👁️👄👁️ (this replaces losing points)
+  safe: { x: 20, y: 250, w: 210, h: 400 },  // safe zone on the left: room for four, nothing can touch you
   goose: {
     r: 40,               // collision radius
     speed: 470,          // px / s, a bit faster than a player
@@ -112,6 +113,10 @@ const isPossum = (p, now) => p.possumUntil > now;
 const isCritter = (p, now) => p.critterUntil > now;
 const isJelly = (p, now) => p.jellyUntil > now;
 const isEyes = (p, now) => p.eyesUntil > now;
+function inSafeZone(p) {
+  const z = CONSTS.safe;
+  return p.x >= z.x && p.x <= z.x + z.w && p.y >= z.y && p.y <= z.y + z.h;
+}
 
 /** The penalty for getting goosed or jellied: no points lost, you are just 👁️👄👁️ for a while. */
 function eyes(world, p, now) {
@@ -204,7 +209,7 @@ function stepOpossum(world, dt, now) {
 
 function collideOpossum(world, p, now) {
   const o = world.opossum;
-  if (!o) return;
+  if (!o || inSafeZone(p)) return;
   const { R } = CONSTS;
   const cx = clamp(p.x, o.x - o.hw, o.x + o.hw);
   const cy = clamp(p.y, o.y - o.hh, o.y + o.hh);
@@ -258,7 +263,7 @@ function stepGreylag(world, dt, now) {
   let vx, vy;
   if (g.nuts) {
     const t = world.players.get(g.nuts.targetId);
-    if (!t || now >= g.nuts.until || isJelly(t, now)) {
+    if (!t || now >= g.nuts.until || isJelly(t, now) || inSafeZone(t)) {
       g.nuts = null;
       world.events.push({ type: 'gooseCalm' });
       vx = g.vx; vy = g.vy;
@@ -278,6 +283,7 @@ function stepGreylag(world, dt, now) {
     if (now >= g.wpUntil) { g.wpY = rand(C.r + 30, ARENA.h - C.r - 30); g.wpUntil = now + rand(1200, 3500); }
     let best = null, bestD = Infinity;
     for (const p of world.players.values()) {
+      if (inSafeZone(p)) continue;
       const d = Math.hypot(p.x - g.x, p.y - g.y);
       if (d < bestD) { best = p; bestD = d; }
     }
@@ -319,7 +325,7 @@ function jelly(world, p, now) {
 
 function collideGreylag(world, p, now) {
   const g = world.greylag;
-  if (!g || isJelly(p, now)) return;
+  if (!g || isJelly(p, now) || inSafeZone(p)) return;
   const C = CONSTS.greylag;
   const { R } = CONSTS;
   // mother: a solid barrier, and the end of you if she is after you
@@ -388,10 +394,10 @@ function chargeHonk(world, p, now) {
 
 function pickGooseTarget(world, g, now) {
   const cur = world.players.get(g.targetId);
-  if (cur && !isPossum(cur, now)) return cur;
+  if (cur && !isPossum(cur, now) && !inSafeZone(cur)) return cur;
   let best = null, bestD = Infinity;
   for (const p of world.players.values()) {
-    if (isPossum(p, now)) continue;
+    if (isPossum(p, now) || inSafeZone(p)) continue;
     const d = Math.hypot(p.x - g.x, p.y - g.y);
     if (d < bestD) { best = p; bestD = d; }
   }
@@ -422,7 +428,7 @@ function stepGoose(world, dt, now) {
 
 function collideGoose(world, p, now) {
   const g = world.goose;
-  if (!g) return;
+  if (!g || inSafeZone(p)) return;
   const C = CONSTS.goose;
   const { R } = CONSTS;
   let dx = p.x - g.x, dy = p.y - g.y;
@@ -477,6 +483,7 @@ function resolvePair(world, a, b, now) {
   b.x += nx * overlap / 2; b.y += ny * overlap / 2;
 
   if (isJelly(a, now) || isJelly(b, now)) return;   // jelly has no top, no bottom, and no opinions
+  if (inSafeZone(a) || inSafeZone(b)) return;       // nothing happens in, or to, the safe zone
   const aCritter = isCritter(a, now), bCritter = isCritter(b, now);
   if (aCritter || bCritter) {
     if (aCritter && bCritter) return;          // two possums just bounce
@@ -559,6 +566,7 @@ function snapshot(world, now = Date.now()) {
       jellied: !!p.jellied,
       eyes: isEyes(p, now),
       eyesLeft: isEyes(p, now) ? p.eyesUntil - now : 0,
+      safe: inSafeZone(p),
     });
   }
   const honk = [];
@@ -581,4 +589,4 @@ function snapshot(world, now = Date.now()) {
   };
 }
 
-module.exports = { ARENA, CONSTS, createWorld, addPlayer, removePlayer, setInput, step, snapshot, isPossum, isCritter, isJelly, isEyes, inHonkZone, spawnGreylag };
+module.exports = { ARENA, CONSTS, createWorld, addPlayer, removePlayer, setInput, step, snapshot, isPossum, isCritter, isJelly, isEyes, inHonkZone, inSafeZone, spawnGreylag };

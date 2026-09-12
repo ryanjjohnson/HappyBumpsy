@@ -25,6 +25,9 @@ Every tap is a point. Most points wins. Mind the opossum.
   (and re-arms her).
 - A **safe zone** on the left has room for four. Inside it nobody can bump you, you can't bump anyone, and every
   hazard ignores you (the geese retarget). While you stand in it, the rules are overlaid on the arena.
+- **Sounds**, all synthesized in the browser with the Web Audio API (no audio files): geese honk while they're
+  about and hiss when they attack, getting bonked is a quiet pop, bonking someone is a soft cha-ching, and getting
+  possumed is a soft raspy hiss. There's a mute button in the HUD; the choice is remembered per browser.
 - **No penalty ever costs points.** The 👁️👄👁️ form is purely cosmetic: you play on as normal, you just look like that.
 - Join an empty arena and two house bots show up: **Wuhhhhh** hunts you, **Heeeeeyyyyy** mostly wanders.
   They leave when the last human does, and they don't get on the score tables.

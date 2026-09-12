@@ -18,7 +18,124 @@
   const hudBoard = $('#hud-board');
   const hudBanner = $('#hud-banner');
   const leaveBtn = $('#leave');
+  const muteBtn = $('#mute');
   const rulesEl = $('#rules');
+
+  // ---------- sound: everything is synthesized, nothing to download ----------
+  const Sfx = (() => {
+    let ctx = null, master = null, noise = null;
+    let muted = false;
+    try { muted = localStorage.getItem('happybumpsy.muted') === '1'; } catch (_) {}
+    function ensure() {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = muted ? 0 : 0.6;
+        master.connect(ctx.destination);
+      }
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      return ctx;
+    }
+    function noiseBuf() {
+      if (noise) return noise;
+      noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const d = noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      return noise;
+    }
+    function gainEnv(t, peak, attack, hold, release) {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + attack);
+      g.gain.setValueAtTime(peak, t + attack + hold);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + attack + hold + release);
+      g.connect(master);
+      return g;
+    }
+    function ready() { return ensure() && !muted; }
+    return {
+      unlock: ensure,
+      get muted() { return muted; },
+      setMuted(m) {
+        muted = m;
+        try { localStorage.setItem('happybumpsy.muted', m ? '1' : '0'); } catch (_) {}
+        if (ensure() && master) master.gain.setTargetAtTime(m ? 0 : 0.6, ctx.currentTime, 0.02);
+      },
+      // a goose honk. kind: 'canada' (higher, brassy) or 'greylag' (lower, lazier)
+      honk(kind = 'canada', loud = 1) {
+        if (!ready()) return;
+        const t = ctx.currentTime;
+        const f = kind === 'greylag' ? 175 : 240;
+        const dur = kind === 'greylag' ? 0.42 : 0.3;
+        const filt = ctx.createBiquadFilter();
+        filt.type = 'bandpass'; filt.frequency.value = f * 4; filt.Q.value = 2.5;
+        const g = gainEnv(t, 0.32 * loud, 0.03, dur * 0.5, dur * 0.5);
+        filt.connect(g);
+        for (const [type, mult, vol] of [['sawtooth', 1, 1], ['square', 1.5, 0.35], ['sawtooth', 2.02, 0.2]]) {
+          const o = ctx.createOscillator();
+          o.type = type;
+          o.frequency.setValueAtTime(f * mult * 1.12, t);
+          o.frequency.exponentialRampToValueAtTime(f * mult, t + dur * 0.4);
+          o.frequency.exponentialRampToValueAtTime(f * mult * 0.9, t + dur);
+          const og = ctx.createGain(); og.gain.value = vol;
+          o.connect(og); og.connect(filt);
+          o.start(t); o.stop(t + dur + 0.05);
+        }
+      },
+      // a sharp goose hiss: band-passed noise
+      hiss(loud = 1) {
+        if (!ready()) return;
+        const t = ctx.currentTime;
+        const src = ctx.createBufferSource(); src.buffer = noiseBuf();
+        const filt = ctx.createBiquadFilter();
+        filt.type = 'bandpass'; filt.frequency.setValueAtTime(3200, t); filt.frequency.linearRampToValueAtTime(4800, t + 0.5); filt.Q.value = 0.9;
+        const g = gainEnv(t, 0.22 * loud, 0.04, 0.25, 0.35);
+        src.connect(filt); filt.connect(g);
+        src.start(t); src.stop(t + 0.8);
+      },
+      // getting possumed: a soft, raspy hiss (low-passed noise chopped by a tremolo)
+      rasp() {
+        if (!ready()) return;
+        const t = ctx.currentTime;
+        const src = ctx.createBufferSource(); src.buffer = noiseBuf();
+        const filt = ctx.createBiquadFilter();
+        filt.type = 'lowpass'; filt.frequency.setValueAtTime(1400, t); filt.frequency.exponentialRampToValueAtTime(600, t + 0.7); filt.Q.value = 1.2;
+        const trem = ctx.createGain(); trem.gain.value = 0.6;
+        const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 28;
+        const lfoG = ctx.createGain(); lfoG.gain.value = 0.4;
+        lfo.connect(lfoG); lfoG.connect(trem.gain);
+        const g = gainEnv(t, 0.16, 0.05, 0.3, 0.4);
+        src.connect(filt); filt.connect(trem); trem.connect(g);
+        src.start(t); src.stop(t + 0.85); lfo.start(t); lfo.stop(t + 0.85);
+      },
+      // getting bonked: a quiet pop
+      pop() {
+        if (!ready()) return;
+        const t = ctx.currentTime;
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(620, t); o.frequency.exponentialRampToValueAtTime(140, t + 0.07);
+        const g = gainEnv(t, 0.14, 0.005, 0.02, 0.08);
+        o.connect(g); o.start(t); o.stop(t + 0.15);
+      },
+      // bonking someone: a soft cha-ching
+      chaching() {
+        if (!ready()) return;
+        const t = ctx.currentTime;
+        for (const [f, at, len, vol] of [[1318, 0, 0.12, 0.1], [1760, 0.09, 0.28, 0.12], [3520, 0.09, 0.2, 0.03]]) {
+          const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+          const g = gainEnv(t + at, vol, 0.01, len * 0.3, len * 0.7);
+          o.connect(g); o.start(t + at); o.stop(t + at + len + 0.05);
+        }
+      },
+    };
+  })();
+  const sfxTimers = { canadaHonk: 0, greylagHonk: 0, greylagHiss: 0 };
+  function renderMute() { muteBtn.textContent = Sfx.muted ? '🔇' : '🔊'; muteBtn.title = Sfx.muted ? 'unmute' : 'mute'; }
+  muteBtn.addEventListener('click', () => { Sfx.setMuted(!Sfx.muted); renderMute(); });
+  window.addEventListener('pointerdown', () => Sfx.unlock(), { passive: true });
+  renderMute();
   const lists = { current: $('#list-current'), latest: $('#list-latest'), allTime: $('#list-alltime') };
 
   let ARENA = { w: 1600, h: 900 };
@@ -100,6 +217,7 @@
         break;
       case 'joined':
         joined = true;
+        Sfx.unlock();
         myName = msg.name;
         hudName.textContent = msg.name;
         overlay.hidden = true;
@@ -359,6 +477,16 @@
       goslingEls.length = 0;
     }
 
+    // ambient goose noises
+    if (joined) {
+      const nowMs = performance.now();
+      if (gs && nowMs > sfxTimers.canadaHonk) { Sfx.honk('canada', 0.8); sfxTimers.canadaHonk = nowMs + 1200 + Math.random() * 1800; }
+      if (gl) {
+        if (gl.nuts) { if (nowMs > sfxTimers.greylagHiss) { Sfx.hiss(0.7); sfxTimers.greylagHiss = nowMs + 700 + Math.random() * 500; } }
+        else if (nowMs > sfxTimers.greylagHonk) { Sfx.honk('greylag', 0.6); sfxTimers.greylagHonk = nowMs + 4000 + Math.random() * 5000; }
+      }
+    }
+
     const honk = cur.honk || [];
     const top = honk.reduce((a, b) => (!a || b.progress > a.progress ? b : a), null);
     const zh = C.goose ? C.goose.honk.h : 110;
@@ -442,27 +570,35 @@
         if (ev.partial) fx(ev.x, ev.y - 20, `${ev.hits}/${C.hitsToScore}`, 'partial');
         else if (ev.via === 'possum') fx(ev.x, ev.y - 20, ev.scorer === myId ? '+1 FLIPPED!' : '+1 🦝', '');
         else fx(ev.x, ev.y - 20, ev.scorer === myId ? '+1 BUMP!' : '+1', '');
+        if (ev.victim === myId) Sfx.pop();
+        if (ev.scorer === myId && !ev.partial) Sfx.chaching();
       } else if (ev.type === 'greylag') {
+        if (joined) Sfx.honk('greylag', 0.8);
         if (joined) showBanner(ev.goslings ? `🪿 a greylag goose is passing through with ${ev.goslings} goslings. Do NOT touch the babies.` : '🪿 a greylag goose is passing through. She seems calm.', '', 5000);
       } else if (ev.type === 'gooseNuts') {
         fx(ev.x, ev.y - 60, 'MAMA IS COMING', 'nuts');
+        if (joined) { Sfx.hiss(1); Sfx.honk('greylag', 1); setTimeout(() => Sfx.hiss(0.8), 300); }
         if (ev.id === myId) showBanner('🪿 you touched a baby. RUN.', 'goose', 3000);
       } else if (ev.type === 'jellied') {
         fx(ev.x, ev.y - 60, 'MINT JELLY', 'jelly');
+        if (joined) Sfx.hiss(ev.id === myId ? 1 : 0.5);
       } else if (ev.type === 'sixtyseven') {
         fx(ev.x, ev.y - 60, '67!', 'sixtyseven');
       } else if (ev.type === 'bots') {
         if (joined) showBanner(`🤖 ${ev.names.join(' and ')} wandered in to keep you company`, '', 4000);
       } else if (ev.type === 'goose') {
         showBanner(`🪿 ${ev.name} summoned a goose. RUN.`, 'goose', 4500);
+        if (joined) { Sfx.honk('canada', 1); setTimeout(() => Sfx.honk('canada', 0.9), 350); }
       } else if (ev.type === 'goosed') {
         fx(ev.x, ev.y - 40, 'HONK!', 'goosed');
+        if (joined) { Sfx.hiss(ev.id === myId ? 1 : 0.6); Sfx.honk('canada', 0.7); }
       } else if (ev.type === 'eyes') {
         fx(ev.x, ev.y + 70, '👁️👄👁️', 'eyesfx');
       } else if (ev.type === 'transform') {
         fx(ev.x, ev.y - 70, `${ev.name} IS THE POSSUM NOW`, 'transform');
       } else if (ev.type === 'possum') {
         fx(ev.x, ev.y - 60, ev.by ? `flipped by ${ev.by}` : "playin' possum", 'possum');
+        if (ev.id === myId) Sfx.rasp();
       } else if (ev.type === 'opossum') {
         if (joined) showBanner('🦝 an opossum waddles in… don\'t touch it', '', 3500);
       }

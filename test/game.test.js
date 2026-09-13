@@ -234,15 +234,19 @@ test('possum form wears off, and the wild opossum ignores a playable possum', ()
 const G = game.CONSTS.goose;
 const zoneCentre = { x: G.honk.x + G.honk.w / 2, y: G.honk.y + G.honk.h / 2 };
 
-test('loitering in the HONK zone for 20 seconds releases a goose from the opposite corner', () => {
+test('loitering in the HONK zone for 15 seconds releases a goose from the opposite corner', () => {
   const w = world();
   const p = place(w, 'p', zoneCentre.x, zoneCentre.y);
   assert.ok(game.inHonkZone(p));
-  game.step(w, DT, NOW);
-  game.step(w, DT, NOW + G.honkMs - 100);
+  let t = NOW;
+  const stepsToAlmost = Math.floor((G.honkMs - 200) / 33);
+  for (let i = 0; i < stepsToAlmost; i++) { t += 33; game.step(w, 0.033, t); }
   assert.equal(w.goose, null, 'not yet');
-  assert.ok(game.snapshot(w, NOW + G.honkMs - 100).honk[0].progress > 0.99);
-  game.step(w, DT, NOW + G.honkMs);
+  const h = game.snapshot(w, t).honk;
+  assert.ok(h.progress > 0.97 && h.progress < 1, `progress ${h.progress}`);
+  assert.equal(h.rate, 1);
+  assert.deepEqual(h.names, ['p']);
+  for (let i = 0; i < 12; i++) { t += 33; game.step(w, 0.033, t); }
   assert.ok(w.goose, 'goose released');
   assert.equal(w.goose.targetId, 'p');
   assert.ok(w.goose.x < 100 && w.goose.y < 100, 'starts top-left');
@@ -252,13 +256,42 @@ test('loitering in the HONK zone for 20 seconds releases a goose from the opposi
 test('leaving the HONK zone resets the charge', () => {
   const w = world();
   const p = place(w, 'p', zoneCentre.x, zoneCentre.y);
-  game.step(w, DT, NOW);
+  for (let i = 0; i < 300; i++) game.step(w, DT, NOW + i * 33);   // ~10 s in the box
+  assert.ok(w.honkCharge > 0.6);
   p.x = 200; p.y = 200;
-  game.step(w, DT, NOW + G.honkMs / 2);
+  game.step(w, DT, NOW + 10000);
   assert.equal(p.honkSince, 0);
+  assert.equal(w.honkCharge, 0);
   p.x = zoneCentre.x; p.y = zoneCentre.y;
-  game.step(w, DT, NOW + G.honkMs + 1000);
+  game.step(w, DT, NOW + 10100);
   assert.equal(w.goose, null);
+  assert.ok(w.honkCharge < 0.01, 'starts over');
+});
+
+test('every extra player in the HONK box doubles the charge rate, and the longest-in player is the summoner', () => {
+  // three abreast, exactly touching, so nobody shoves anybody out of the box
+  const row = [G.honk.x + 2 + R, G.honk.x + 2 + R + 2 * R, G.honk.x + 2 + R + 4 * R];
+  const run = (n) => {
+    const w = world();
+    for (let i = 0; i < n; i++) place(w, `p${i}`, row[i], zoneCentre.y);
+    w.players.get('p0').honkSince = 0;
+    let t = NOW, steps = 0;
+    while (!w.goose && steps < 2000) { t += 33; steps++; game.step(w, 0.033, t); }
+    return { ms: steps * 33, summoner: w.goose && w.goose.targetId };
+  };
+  const one = run(1), two = run(2), three = run(3);
+  assert.ok(Math.abs(one.ms - G.honkMs) < 150, `one player: ${one.ms}ms`);
+  assert.ok(Math.abs(two.ms - G.honkMs / 2) < 150, `two players: ${two.ms}ms`);
+  assert.ok(Math.abs(three.ms - G.honkMs / 4) < 150, `three players: ${three.ms}ms`);
+  assert.equal(three.summoner, 'p0');
+  // four in the box (a tight 2x2, fine for a single tick): 8x
+  const w = world();
+  const ys = [G.honk.y + 12, game.ARENA.h - R];
+  [[row[0], ys[0]], [row[2], ys[0]], [row[0], ys[1]], [row[2], ys[1]]].forEach(([x, y], i) => place(w, `q${i}`, x, y));
+  game.step(w, DT, NOW);
+  const h = game.snapshot(w, NOW).honk;
+  assert.equal(h.rate, 8);
+  assert.equal(h.names.length, 4);
 });
 
 test('the goose chases its summoner first', () => {

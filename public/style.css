@@ -67,6 +67,7 @@ button { font: inherit; cursor: pointer; }
 .honk-box { fill: #2a1f2e; stroke: #6a4a7a; stroke-width: 2; stroke-dasharray: 8 6; }
 .honk-fill { fill: #b45cff; opacity: .45; }
 .honk-label { font-size: 44px; font-weight: 900; fill: #b48ad0; text-anchor: middle; letter-spacing: 4px; pointer-events: none; }
+.honk-sub { font-size: 12px; font-weight: 600; fill: #8a68a0; text-anchor: middle; pointer-events: none; }
 .honk-who { font-size: 15px; font-weight: 700; fill: #e9d5ff; text-anchor: middle; pointer-events: none; }
 #goose-actor .bob { animation: bob .45s ease-in-out infinite; transform-origin: 100px 100px; transform-box: view-box; }
 @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(2deg); } }

@@ -23,7 +23,7 @@ const CONSTS = {
     ms: 20000,           // how long a goose stays
     possumMs: 20000,     // how long a goosed player plays dead
     honkMs: 15000,       // hover in the HONK zone this long to summon one
-    honk: { x: 1400, y: 770, w: 180, h: 110 }, // bottom-right zone (top-left corner + size)
+    honk: { x: 1330, y: 670, w: 250, h: 210 }, // bottom-right zone (top-left corner + size); fits a 3x2 huddle
   },
   greylag: {
     r: 46,               // body collision radius
@@ -53,6 +53,7 @@ function createWorld(now = Date.now()) {
     players: new Map(),
     opossum: null,
     goose: null,
+    honkCharge: 0,       // shared HONK charge, 0..1; every extra player in the box doubles the rate
     greylag: null,
     nextGreylagAt: now + rand(12000, 25000),
     nextOpossumAt: now + rand(6000, 15000),
@@ -383,12 +384,23 @@ function spawnGoose(world, summoner, now) {
   world.events.push({ type: 'goose', id: summoner.id, name: summoner.name });
 }
 
-function chargeHonk(world, p, now) {
-  if (!inHonkZone(p) || isPossum(p, now) || isCritter(p, now) || isJelly(p, now)) { p.honkSince = 0; return; }
-  if (!p.honkSince) p.honkSince = now;
-  if (!world.goose && now - p.honkSince >= CONSTS.goose.honkMs) {
-    p.honkSince = 0;
-    spawnGoose(world, p, now);
+const honkers = (world, now) => [...world.players.values()]
+  .filter((p) => inHonkZone(p) && !isPossum(p, now) && !isCritter(p, now) && !isJelly(p, now));
+const honkRate = (n) => (n > 0 ? 2 ** (n - 1) : 0);
+
+/** The HONK box charges while anyone stands in it. Each extra player doubles the rate. */
+function chargeHonk(world, dt, now) {
+  const inBox = honkers(world, now);
+  for (const p of world.players.values()) {
+    if (inBox.includes(p)) { if (!p.honkSince) p.honkSince = now; } else p.honkSince = 0;
+  }
+  if (!inBox.length) { world.honkCharge = 0; return; }
+  world.honkCharge = Math.min(1, world.honkCharge + (dt * 1000 / CONSTS.goose.honkMs) * honkRate(inBox.length));
+  if (world.honkCharge >= 1 && !world.goose) {
+    world.honkCharge = 0;
+    const summoner = inBox.reduce((a, b) => (a.honkSince <= b.honkSince ? a : b)); // longest in the box
+    for (const p of inBox) p.honkSince = now;
+    spawnGoose(world, summoner, now);
   }
 }
 
@@ -536,7 +548,7 @@ function step(world, dt, now = Date.now()) {
   for (const p of players) collideOpossum(world, p, now);
   for (const p of players) collideGoose(world, p, now);
   for (const p of players) collideGreylag(world, p, now);
-  for (const p of players) chargeHonk(world, p, now);
+  chargeHonk(world, dt, now);
   for (let i = 0; i < players.length; i++) {
     for (let j = i + 1; j < players.length; j++) resolvePair(world, players[i], players[j], now);
   }
@@ -569,10 +581,12 @@ function snapshot(world, now = Date.now()) {
       safe: inSafeZone(p),
     });
   }
-  const honk = [];
-  for (const p of world.players.values()) {
-    if (p.honkSince) honk.push({ id: p.id, name: p.name, progress: Math.min(1, (now - p.honkSince) / CONSTS.goose.honkMs) });
-  }
+  const inBox = honkers(world, now);
+  const honk = inBox.length ? {
+    progress: world.honkCharge,
+    rate: honkRate(inBox.length),
+    names: inBox.sort((a, b) => a.honkSince - b.honkSince).map((p) => p.name),
+  } : null;
   const o = world.opossum;
   const g = world.goose;
   const gl = world.greylag;

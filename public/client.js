@@ -487,13 +487,16 @@
       }
     }
 
-    const honk = cur.honk || [];
-    const top = honk.reduce((a, b) => (!a || b.progress > a.progress ? b : a), null);
+    const honk = cur.honk;
     const zh = C.goose ? C.goose.honk.h : 110;
-    const fillH = top ? Math.round(top.progress * zh) : 0;
+    const fillH = honk ? Math.round(honk.progress * zh) : 0;
     honkFill.setAttribute('y', zh - fillH);
     honkFill.setAttribute('height', fillH);
-    honkWho.textContent = top ? `${top.name} ${Math.ceil((1 - top.progress) * (C.goose ? C.goose.honkMs : 15000) / 1000)}s` : '';
+    if (honk) {
+      const secs = Math.ceil((1 - honk.progress) * (C.goose ? C.goose.honkMs : 15000) / honk.rate / 1000);
+      const who = honk.names.length > 1 ? `${honk.names[0]} +${honk.names.length - 1}` : honk.names[0];
+      honkWho.textContent = `${who} · ${honk.rate > 1 ? `${honk.rate}x · ` : ''}${secs}s`;
+    } else honkWho.textContent = '';
 
     if (joined) {
       if (me) {

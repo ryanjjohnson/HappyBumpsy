@@ -15,7 +15,8 @@ Every tap is a point. Most points wins. Mind the opossum.
 - Get scored on **3 times within 10 seconds** and you turn into a **playable possum** for 10 seconds.
   Anyone you touch plays dead and you take the point. Nobody can score on you while you're the possum,
   and the wild opossum leaves you alone.
-- Loiter in the **HONK** box in the bottom-right corner for 15 seconds and a Canada goose is released from
+- Loiter in the **HONK** box in the bottom-right corner for 15 seconds (the charge is shared, and every extra player
+  in the box doubles the rate: two players take 7.5 s, three take under 4) and a Canada goose is released from
   the top-left corner. It chases players for 20 seconds, the summoner first. A hit in your **side** means 20 seconds
   playing dead and 30 seconds as 👁️👄👁️. Meet it with your top or bottom and it bounces off.
 - A **greylag goose** drifts through now and then, meandering up and down and parking herself in front of whoever's

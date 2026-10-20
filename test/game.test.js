@@ -234,7 +234,7 @@ test('possum form wears off, and the wild opossum ignores a playable possum', ()
 const G = game.CONSTS.goose;
 const zoneCentre = { x: G.honk.x + G.honk.w / 2, y: G.honk.y + G.honk.h / 2 };
 
-test('loitering in the HONK zone for 15 seconds releases a goose from the opposite corner', () => {
+test('loitering in the HONK zone for 10 seconds releases a goose from the opposite corner', () => {
   const w = world();
   const p = place(w, 'p', zoneCentre.x, zoneCentre.y);
   assert.ok(game.inHonkZone(p));
@@ -256,7 +256,7 @@ test('loitering in the HONK zone for 15 seconds releases a goose from the opposi
 test('leaving the HONK zone resets the charge', () => {
   const w = world();
   const p = place(w, 'p', zoneCentre.x, zoneCentre.y);
-  for (let i = 0; i < 300; i++) game.step(w, DT, NOW + i * 33);   // ~10 s in the box
+  for (let i = 0; i < 210; i++) game.step(w, DT, NOW + i * 33);   // ~7 s in the box, most of the way charged
   assert.ok(w.honkCharge > 0.6);
   p.x = 200; p.y = 200;
   game.step(w, DT, NOW + 10000);

@@ -22,7 +22,7 @@ const CONSTS = {
     steer: 6,            // how quickly it turns toward its target (per second)
     ms: 20000,           // how long a goose stays
     possumMs: 20000,     // how long a goosed player plays dead
-    honkMs: 15000,       // hover in the HONK zone this long to summon one
+    honkMs: 10000,       // hover in the HONK zone this long to summon one
     honk: { x: 1330, y: 670, w: 250, h: 210 }, // bottom-right zone (top-left corner + size); fits a 3x2 huddle
   },
   greylag: {

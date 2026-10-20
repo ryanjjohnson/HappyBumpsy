@@ -493,7 +493,7 @@
     honkFill.setAttribute('y', zh - fillH);
     honkFill.setAttribute('height', fillH);
     if (honk) {
-      const secs = Math.ceil((1 - honk.progress) * (C.goose ? C.goose.honkMs : 15000) / honk.rate / 1000);
+      const secs = Math.ceil((1 - honk.progress) * (C.goose ? C.goose.honkMs : 10000) / honk.rate / 1000);
       const who = honk.names.length > 1 ? `${honk.names[0]} +${honk.names.length - 1}` : honk.names[0];
       honkWho.textContent = `${who} · ${honk.rate > 1 ? `${honk.rate}x · ` : ''}${secs}s`;
     } else honkWho.textContent = '';
